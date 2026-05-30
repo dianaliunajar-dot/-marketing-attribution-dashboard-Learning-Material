@@ -1,6 +1,6 @@
 # GTM Signal — Learn How Marketing Attribution Really Works
 
-A free, hands-on tool for understanding one of the most confusing — and most gatekept — topics in marketing: **where do sales actually come from, what does each channel really cost, and where should the next dollar go?**
+A free, hands-on tool for understanding one of the most gatekept topics in marketing: **where do sales actually come from, what does each channel really cost, and where should the next dollar go?**
 
 The software that answers these questions for real companies costs hundreds of dollars a month and hides its workings behind AI. This does the opposite: it's free, it's open, and it *shows you the maths* — so you can learn the ideas by clicking around instead of reading a textbook.
 
@@ -16,9 +16,8 @@ The software that answers these questions for real companies costs hundreds of d
 Anyone who wants to understand marketing measurement without paying for enterprise software or sitting through a course:
 
 - marketers who keep hearing "attribution" and want to actually *get* it,
-- founders and operators deciding where to put their budget,
 - students and career-switchers building real data literacy,
-- and anyone curious about how the expensive tools work underneath.
+- and anyone curious about how the tools work underneath.
 
 ## What you'll learn
 
