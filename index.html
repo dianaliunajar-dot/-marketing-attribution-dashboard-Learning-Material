@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GTM Attribution &amp; Channel Economics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e14;
+  --bg-2:#0f1620;
+  --panel:#121a26;
+  --panel-2:#16202e;
+  --line:#22303f;
+  --line-soft:#1a2533;
+  --ink:#e7eef6;
+  --ink-2:#9fb1c4;
+  --ink-3:#637488;
+  --accent:#34e0c4;
+  --accent-2:#4f8cff;
+  --warn:#f0a23a;
+  --bad:#ef5d6e;
+  --good:#5fd38a;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --ui:'Archivo',system-ui,sans-serif;
+  --display:'Fraunces',Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(79,140,255,.08), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(52,224,196,.06), transparent 55%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--ui);
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+
+/* ---------- sidebar ---------- */
+.rail{
+  position:sticky;top:0;align-self:start;height:100vh;
+  border-right:1px solid var(--line);
+  background:linear-gradient(180deg,var(--bg-2),var(--bg));
+  padding:24px 18px;display:flex;flex-direction:column;gap:8px;
+}
+.brand{display:flex;flex-direction:column;gap:2px;margin-bottom:22px}
+.brand .mark{
+  font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.02em;
+  line-height:1.1;
+}
+.brand .mark em{color:var(--accent);font-style:normal}
+.brand .sub{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.nav a{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;
+  color:var(--ink-2);text-decoration:none;font-weight:500;font-size:13px;
+  transition:background .15s,color .15s;cursor:pointer;
+}
+.nav a .dot{width:6px;height:6px;border-radius:50%;background:var(--line);transition:background .15s}
+.nav a:hover{background:var(--panel);color:var(--ink)}
+.nav a.active{background:var(--panel-2);color:var(--ink)}
+.nav a.active .dot{background:var(--accent)}
+.rail .foot{margin-top:auto;font-size:10.5px;color:var(--ink-3);line-height:1.5}
+.badge-syn{
+  display:inline-block;margin-bottom:10px;padding:4px 8px;border:1px solid var(--line);
+  border-radius:6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);
+  background:var(--panel);
+}
+
+/* ---------- main ---------- */
+main{padding:32px 40px 80px;max-width:1180px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:8px}
+.topbar h1{
+  font-family:var(--display);font-weight:500;font-size:30px;letter-spacing:-.02em;margin:0;
+}
+.topbar p{margin:6px 0 0;color:var(--ink-2);max-width:560px;font-size:13.5px}
+.range-chip{
+  font-family:var(--mono);font-size:11px;color:var(--ink-2);border:1px solid var(--line);
+  padding:6px 10px;border-radius:8px;background:var(--panel);white-space:nowrap;
+}
+.divider{height:1px;background:var(--line-soft);margin:26px 0}
+
+section{scroll-margin-top:20px}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin:38px 0 16px}
+.sec-head .idx{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.sec-head h2{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:-.01em;margin:0}
+.sec-head .note{margin-left:auto;color:var(--ink-3);font-size:12px;max-width:380px;text-align:right}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{
+  background:linear-gradient(180deg,var(--panel),var(--panel-2));
+  border:1px solid var(--line);border-radius:14px;padding:16px 17px;position:relative;overflow:hidden;
+}
+.card .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.card .val{font-family:var(--mono);font-size:25px;font-weight:500;margin-top:9px;letter-spacing:-.02em}
+.card .meta{font-size:11.5px;color:var(--ink-2);margin-top:6px}
+.card .spark{position:absolute;right:-2px;bottom:-2px;width:96px;height:46px;opacity:.5}
+.tone-good{color:var(--good)} .tone-warn{color:var(--warn)} .tone-bad{color:var(--bad)} .tone-acc{color:var(--accent)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.grid-2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+.grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.panel h3{margin:0 0 4px;font-size:14px;font-weight:600}
+.panel .cap{color:var(--ink-3);font-size:11.5px;margin:0 0 14px}
+
+.chart-wrap{position:relative;width:100%}
+
+/* funnel */
+.funnel{display:flex;flex-direction:column;gap:7px;margin-top:6px}
+.funnel .row{display:grid;grid-template-columns:120px 1fr 78px;align-items:center;gap:10px}
+.funnel .name{font-size:12px;color:var(--ink-2)}
+.funnel .track{height:26px;background:var(--bg-2);border-radius:7px;overflow:hidden;border:1px solid var(--line-soft)}
+.funnel .fill{height:100%;border-radius:7px 0 0 7px;background:linear-gradient(90deg,var(--accent-2),var(--accent));display:flex;align-items:center}
+.funnel .num{font-family:var(--mono);font-size:12.5px;text-align:right}
+.funnel .conv{font-family:var(--mono);font-size:10px;color:var(--ink-3);padding-left:8px}
+
+/* model selector */
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{
+  font-family:var(--ui);font-size:12px;font-weight:500;color:var(--ink-2);background:transparent;
+  border:0;padding:7px 12px;border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--panel-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.slider-box{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-2);
+  background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:7px 12px}
+.slider-box input[type=range]{accent-color:var(--accent);width:120px}
+.slider-box b{font-family:var(--mono);color:var(--ink);min-width:46px;text-align:right}
+
+.assume{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.assume .slider-box{flex:1;min-width:200px}
+
+/* explainer */
+.explain{border-left:2px solid var(--accent);padding:2px 0 2px 14px;color:var(--ink-2);font-size:12.5px}
+.explain b{color:var(--ink)}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:10px 10px;text-align:right;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+th{color:var(--ink-3);font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;user-select:none}
+th.left,td.left{text-align:left}
+th:hover{color:var(--ink)}
+td.num{font-family:var(--mono)}
+tbody tr:hover{background:var(--panel-2)}
+.chip{display:inline-flex;align-items:center;gap:6px}
+.swatch{width:9px;height:9px;border-radius:2px;flex:none}
+.pill{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:20px;border:1px solid currentColor}
+.sortcaret{opacity:.5;font-size:9px}
+
+/* saturation cards */
+.sat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.sat-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 15px}
+.sat-card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.sat-card .cname{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.sat-card .mini{height:74px;margin:8px 0 6px}
+.sat-card .stat{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-2);margin-top:3px}
+.sat-card .stat b{font-family:var(--mono);color:var(--ink)}
+.status{font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:20px;font-weight:600}
+.st-under{background:rgba(95,211,138,.12);color:var(--good)}
+.st-eff{background:rgba(79,140,255,.12);color:var(--accent-2)}
+.st-sat{background:rgba(240,162,58,.14);color:var(--warn)}
+
+/* budget planner */
+.plan-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.plan-out{display:grid;grid-template-columns:1fr;gap:8px}
+.bar-row{display:grid;grid-template-columns:130px 1fr 150px;align-items:center;gap:12px;font-size:12px}
+.bar-row .nm{color:var(--ink-2);display:flex;align-items:center;gap:7px}
+.dualbar{position:relative;height:30px}
+.dualbar .b{position:absolute;left:0;height:12px;border-radius:4px}
+.dualbar .cur{top:1px;background:var(--line);}
+.dualbar .pro{top:16px;}
+.bar-row .delta{font-family:var(--mono);text-align:right;font-size:11.5px}
+.legend{display:flex;gap:16px;font-size:11px;color:var(--ink-2);margin:2px 0 14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:8px;border-radius:3px;display:inline-block}
+.kbig{font-family:var(--mono);font-size:22px;color:var(--accent);font-weight:500}
+
+.foot-note{margin-top:40px;color:var(--ink-3);font-size:11.5px;border-top:1px solid var(--line-soft);padding-top:16px;line-height:1.6}
+
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px}
+  .rail .foot,.brand .sub{display:none}
+  .nav{flex-direction:row;flex-wrap:wrap;margin:0}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .grid-2,.grid-2b{grid-template-columns:1fr}
+  .sat-grid{grid-template-columns:1fr}
+  main{padding:24px 18px 60px}
+  .bar-row{grid-template-columns:96px 1fr 96px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark">GTM&nbsp;<em>Signal</em></div>
+      <div class="sub">Attribution · Economics</div>
+    </div>
+    <nav class="nav" id="nav">
+      <a data-t="overview" class="active"><span class="dot"></span>Executive overview</a>
+      <a data-t="attribution"><span class="dot"></span>Attribution lens</a>
+      <a data-t="economics"><span class="dot"></span>Channel economics</a>
+      <a data-t="saturation"><span class="dot"></span>Diminishing returns</a>
+      <a data-t="plan"><span class="dot"></span>Budget reallocation</a>
+    </nav>
+    <div class="foot">
+      <span class="badge-syn">Synthetic data</span>
+      A free, open tool for learning how marketing attribution and channel economics actually work. All figures are simulated — see README.
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <h1>GTM Attribution &amp; Channel Economics</h1>
+        <p>A self-serve view of where pipeline really comes from — measured five ways — and what each channel costs to acquire and pay back.</p>
+      </div>
+      <div class="range-chip" id="rangeChip">—</div>
+    </div>
+    <div class="divider"></div>
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+      <div class="sec-head"><span class="idx">01</span><h2>Executive overview</h2>
+        <span class="note">Board-level snapshot of marketing-sourced growth and efficiency.</span></div>
+      <div class="cards" id="kpiCards"></div>
+      <div style="height:16px"></div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Spend vs. marketing-sourced pipeline</h3>
+          <p class="cap">Monthly investment against pipeline generated — the trend finance watches.</p>
+          <div class="chart-wrap" style="height:240px"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Acquisition funnel</h3>
+          <p class="cap">Stage-to-stage conversion across all channels.</p>
+          <div class="funnel" id="funnel"></div>
+        </div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="panel"><div class="explain" id="boardNarrative"></div></div>
+    </section>
+
+    <!-- ATTRIBUTION -->
+    <section id="attribution">
+      <div class="sec-head"><span class="idx">02</span><h2>Attribution lens</h2>
+        <span class="note">Five models, computed from opportunity-level touch journeys. The right answer depends on the question.</span></div>
+      <div class="controls">
+        <div class="seg" id="modelSeg">
+          <button data-m="first">First-touch</button>
+          <button data-m="last">Last-touch</button>
+          <button data-m="linear" class="on">Linear</button>
+          <button data-m="decay">Time-decay</button>
+          <button data-m="position">Position 40/20/40</button>
+        </div>
+        <div class="slider-box" id="halflifeBox">
+          Half-life <input type="range" id="halflife" min="5" max="60" step="1" value="14"/> <b id="halflifeVal">14d</b>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Credited ARR by channel — all five lenses</h3>
+          <p class="cap">Selected model is highlighted. Watch closing channels inflate under last-touch and discovery channels inflate under first-touch.</p>
+          <div class="chart-wrap" style="height:340px"><canvas id="attrChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>What this lens assumes</h3>
+          <p class="cap">Trade-offs to communicate to stakeholders.</p>
+          <div class="explain" id="modelExplain"></div>
+          <div style="height:14px"></div>
+          <h3 style="font-size:13px">Credit shift vs. linear baseline</h3>
+          <div id="rankShift" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ECONOMICS -->
+    <section id="economics">
+      <div class="sec-head"><span class="idx">03</span><h2>Channel economics</h2>
+        <span class="note">CAC, LTV, payback and pipeline ROI — driven by the attribution lens selected above.</span></div>
+      <div class="assume">
+        <div class="slider-box">Gross margin <input type="range" id="margin" min="50" max="95" step="1" value="80"/> <b id="marginVal">80%</b></div>
+        <div class="slider-box">Avg. customer lifetime <input type="range" id="life" min="1.5" max="6" step="0.5" value="3.5"/> <b id="lifeVal">3.5y</b></div>
+        <div class="slider-box">Attribution model <b id="econModelLbl" style="min-width:120px">Linear</b></div>
+      </div>
+      <div class="panel" style="padding:8px 12px">
+        <table id="econTable">
+          <thead><tr>
+            <th class="left" data-k="name">Channel</th>
+            <th data-k="spend">Spend</th>
+            <th data-k="customers">Customers</th>
+            <th data-k="arr">Attrib. ARR</th>
+            <th data-k="cac">CAC</th>
+            <th data-k="ltv">LTV</th>
+            <th data-k="ratio">LTV:CAC</th>
+            <th data-k="payback">Payback</th>
+            <th data-k="roi">Pipeline ROI</th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+      <p class="cap" style="margin-top:10px;color:var(--ink-3)">
+        CAC = channel spend ÷ attributed customers. LTV = attributed ACV × gross margin × lifetime. Payback = CAC ÷ (monthly gross profit per customer).
+        “Pipeline ROI” uses channel-<em>sourced</em> pipeline (first-touch system of record), independent of the attribution lens — shown to contrast sourced vs. attributed views.
+      </p>
+    </section>
+
+    <!-- SATURATION -->
+    <section id="saturation">
+      <div class="sec-head"><span class="idx">04</span><h2>Diminishing returns &amp; incrementality</h2>
+        <span class="note">Response curves expose where the next dollar still works — and where it’s wasted.</span></div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Marginal pipeline per next $1k invested</h3>
+          <p class="cap">The incrementality question: not “what did this channel get credit for” but “what would one more dollar do.” Reallocate toward the left.</p>
+          <div class="chart-wrap" style="height:300px"><canvas id="marginalChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Reading the curves</h3>
+          <div class="explain">
+            <b>Correlation ≠ incrementality.</b> Attribution credit (sections 02–03) tells you which touches <i>appear</i> on winning journeys. It cannot tell you what would have happened anyway.
+            <br><br>These response curves model <b>diminishing returns</b>: each channel’s pipeline rises with spend but flattens past its saturation point. The slope at the current operating point is the <b>marginal</b> return — the honest basis for the next budget decision.
+            <br><br>A rigorous read requires <b>geo holdouts, PSA / ghost-ad tests, or conversion-lift experiments</b> to estimate true incremental lift. The curves below are a planning prior, not proof. <span style="color:var(--ink-3)">(See methodology doc.)</span>
+          </div>
+        </div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="sat-grid" id="satGrid"></div>
+    </section>
+
+    <!-- PLAN -->
+    <section id="plan">
+      <div class="sec-head"><span class="idx">05</span><h2>Budget reallocation planner</h2>
+        <span class="note">A greedy reallocator that shifts spend from saturated to under-invested channels along the marginal curve.</span></div>
+      <div class="panel">
+        <div class="plan-head">
+          <div class="slider-box">Reallocate up to <input type="range" id="realloc" min="0" max="25" step="1" value="12"/> <b id="reallocVal">12%</b> of budget</div>
+          <div style="margin-left:auto;text-align:right">
+            <div style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">Projected incremental pipeline / yr</div>
+            <div class="kbig" id="planLift">—</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--line)"></i> Current monthly spend</span>
+          <span><i style="background:var(--accent)"></i> Proposed monthly spend</span>
+        </div>
+        <div class="plan-out" id="planOut"></div>
+      </div>
+      <p class="cap" style="margin-top:10px;color:var(--ink-3)">
+        Greedy hill-climb: repeatedly moves a small increment from the channel with the lowest marginal return to the one with the highest, recomputing slopes each step, capped at ±60% of each channel’s current spend. A directional planning aid — pair with live incrementality tests before committing budget.
+      </p>
+    </section>
+
+    <div class="foot-note" id="footNote"></div>
+  </main>
+</div>
+
+<script>
+/* ============================================================= DATA */
+const DATA = {"meta":{"generated_by":"generate_data.py","seed":73,"n_opportunities":1150,"n_months":18,"won_rate":0.3496,"date_range":["2024-11-01","2026-04-30"],"note":"Synthetic data generated for a learning tool. Not based on any real company."},"channels":{"Paid Search":{"color":"#4F7CFF","role":"discovery"},"Paid Social":{"color":"#7C5CFF","role":"discovery"},"Organic / SEO":{"color":"#1FB8A6","role":"discovery"},"Content Syndic.":{"color":"#E8943A","role":"nurture"},"Review Sites (G2)":{"color":"#E0556E","role":"nurture"},"Lifecycle / Email":{"color":"#36B5E8","role":"nurture"},"Partner":{"color":"#9BBF30","role":"closing"},"Field / Events":{"color":"#C0853A","role":"closing"},"Webinars":{"color":"#5AA8C0","role":"nurture"}},"monthly":[{"month":"2024-11","channel":"Paid Search","spend":73800,"mqls":155,"sqls":53,"opps":26,"pipeline":1123745},{"month":"2024-11","channel":"Paid Social","spend":61700,"mqls":94,"sqls":42,"opps":18,"pipeline":792779},{"month":"2024-11","channel":"Organic / SEO","spend":27000,"mqls":124,"sqls":47,"opps":23,"pipeline":989671},{"month":"2024-11","channel":"Content Syndic.","spend":32000,"mqls":59,"sqls":20,"opps":8,"pipeline":351844},{"month":"2024-11","channel":"Review Sites (G2)","spend":25000,"mqls":83,"sqls":32,"opps":13,"pipeline":525842},{"month":"2024-11","channel":"Lifecycle / Email","spend":23000,"mqls":103,"sqls":45,"opps":21,"pipeline":863730},{"month":"2024-11","channel":"Partner","spend":26100,"mqls":80,"sqls":29,"opps":12,"pipeline":453131},{"month":"2024-11","channel":"Field / Events","spend":48300,"mqls":99,"sqls":45,"opps":22,"pipeline":829631},{"month":"2024-11","channel":"Webinars","spend":19300,"mqls":55,"sqls":19,"opps":9,"pipeline":361712},{"month":"2024-12","channel":"Paid Search","spend":75500,"mqls":141,"sqls":64,"opps":28,"pipeline":1183724},{"month":"2024-12","channel":"Paid Social","spend":60400,"mqls":89,"sqls":34,"opps":17,"pipeline":698148},{"month":"2024-12","channel":"Organic / SEO","spend":30300,"mqls":125,"sqls":43,"opps":21,"pipeline":751816},{"month":"2024-12","channel":"Content Syndic.","spend":34900,"mqls":55,"sqls":19,"opps":8,"pipeline":327564},{"month":"2024-12","channel":"Review Sites (G2)","spend":26700,"mqls":83,"sqls":33,"opps":14,"pipeline":496056},{"month":"2024-12","channel":"Lifecycle / Email","spend":24100,"mqls":118,"sqls":54,"opps":28,"pipeline":1129498},{"month":"2024-12","channel":"Partner","spend":31600,"mqls":105,"sqls":38,"opps":18,"pipeline":654253},{"month":"2024-12","channel":"Field / Events","spend":55100,"mqls":90,"sqls":35,"opps":18,"pipeline":759416},{"month":"2024-12","channel":"Webinars","spend":19700,"mqls":56,"sqls":25,"opps":13,"pipeline":466690},{"month":"2025-01","channel":"Paid Search","spend":93800,"mqls":170,"sqls":58,"opps":26,"pipeline":1156706},{"month":"2025-01","channel":"Paid Social","spend":59800,"mqls":95,"sqls":33,"opps":16,"pipeline":563069},{"month":"2025-01","channel":"Organic / SEO","spend":30100,"mqls":118,"sqls":46,"opps":19,"pipeline":736834},{"month":"2025-01","channel":"Content Syndic.","spend":37200,"mqls":62,"sqls":27,"opps":13,"pipeline":462220},{"month":"2025-01","channel":"Review Sites (G2)","spend":30000,"mqls":102,"sqls":42,"opps":22,"pipeline":855203},{"month":"2025-01","channel":"Lifecycle / Email","spend":24700,"mqls":123,"sqls":46,"opps":19,"pipeline":680759},{"month":"2025-01","channel":"Partner","spend":30300,"mqls":98,"sqls":41,"opps":20,"pipeline":849850},{"month":"2025-01","channel":"Field / Events","spend":57700,"mqls":107,"sqls":39,"opps":18,"pipeline":723287},{"month":"2025-01","channel":"Webinars","spend":20300,"mqls":55,"sqls":19,"opps":8,"pipeline":339950},{"month":"2025-02","channel":"Paid Search","spend":103400,"mqls":177,"sqls":78,"opps":39,"pipeline":1579896},{"month":"2025-02","channel":"Paid Social","spend":75800,"mqls":112,"sqls":50,"opps":23,"pipeline":969892},{"month":"2025-02","channel":"Organic / SEO","spend":36000,"mqls":142,"sqls":50,"opps":25,"pipeline":861437},{"month":"2025-02","channel":"Content Syndic.","spend":42900,"mqls":69,"sqls":23,"opps":10,"pipeline":456243},{"month":"2025-02","channel":"Review Sites (G2)","spend":31200,"mqls":94,"sqls":40,"opps":21,"pipeline":756205},{"month":"2025-02","channel":"Lifecycle / Email","spend":26000,"mqls":121,"sqls":43,"opps":23,"pipeline":990793},{"month":"2025-02","channel":"Partner","spend":33900,"mqls":100,"sqls":40,"opps":19,"pipeline":777731},{"month":"2025-02","channel":"Field / Events","spend":68500,"mqls":100,"sqls":36,"opps":17,"pipeline":601912},{"month":"2025-02","channel":"Webinars","spend":22500,"mqls":58,"sqls":19,"opps":9,"pipeline":312519},{"month":"2025-03","channel":"Paid Search","spend":105600,"mqls":168,"sqls":60,"opps":28,"pipeline":1271653},{"month":"2025-03","channel":"Paid Social","spend":70100,"mqls":95,"sqls":42,"opps":20,"pipeline":895997},{"month":"2025-03","channel":"Organic / SEO","spend":32700,"mqls":137,"sqls":60,"opps":29,"pipeline":1034769},{"month":"2025-03","channel":"Content Syndic.","spend":38600,"mqls":57,"sqls":19,"opps":9,"pipeline":325064},{"month":"2025-03","channel":"Review Sites (G2)","spend":32100,"mqls":103,"sqls":44,"opps":19,"pipeline":671255},{"month":"2025-03","channel":"Lifecycle / Email","spend":27900,"mqls":137,"sqls":47,"opps":21,"pipeline":957038},{"month":"2025-03","channel":"Partner","spend":39200,"mqls":119,"sqls":49,"opps":24,"pipeline":1044578},{"month":"2025-03","channel":"Field / Events","spend":69600,"mqls":112,"sqls":47,"opps":20,"pipeline":788541},{"month":"2025-03","channel":"Webinars","spend":25700,"mqls":68,"sqls":28,"opps":15,"pipeline":522578},{"month":"2025-04","channel":"Paid Search","spend":107200,"mqls":181,"sqls":65,"opps":28,"pipeline":1264918},{"month":"2025-04","channel":"Paid Social","spend":75700,"mqls":115,"sqls":40,"opps":21,"pipeline":762665},{"month":"2025-04","channel":"Organic / SEO","spend":33200,"mqls":145,"sqls":64,"opps":29,"pipeline":1017688},{"month":"2025-04","channel":"Content Syndic.","spend":43100,"mqls":69,"sqls":29,"opps":15,"pipeline":688195},{"month":"2025-04","channel":"Review Sites (G2)","spend":30800,"mqls":102,"sqls":45,"opps":21,"pipeline":764443},{"month":"2025-04","channel":"Lifecycle / Email","spend":27100,"mqls":132,"sqls":55,"opps":25,"pipeline":1126471},{"month":"2025-04","channel":"Partner","spend":37600,"mqls":107,"sqls":36,"opps":18,"pipeline":679383},{"month":"2025-04","channel":"Field / Events","spend":62600,"mqls":96,"sqls":33,"opps":16,"pipeline":548237},{"month":"2025-04","channel":"Webinars","spend":25100,"mqls":62,"sqls":22,"opps":10,"pipeline":390461},{"month":"2025-05","channel":"Paid Search","spend":92700,"mqls":174,"sqls":71,"opps":35,"pipeline":1571135},{"month":"2025-05","channel":"Paid Social","spend":74600,"mqls":107,"sqls":46,"opps":24,"pipeline":917368},{"month":"2025-05","channel":"Organic / SEO","spend":33600,"mqls":132,"sqls":60,"opps":28,"pipeline":1176718},{"month":"2025-05","channel":"Content Syndic.","spend":39400,"mqls":63,"sqls":28,"opps":13,"pipeline":566570},{"month":"2025-05","channel":"Review Sites (G2)","spend":27500,"mqls":91,"sqls":40,"opps":18,"pipeline":814609},{"month":"2025-05","channel":"Lifecycle / Email","spend":25400,"mqls":124,"sqls":56,"opps":29,"pipeline":1094316},{"month":"2025-05","channel":"Partner","spend":31800,"mqls":99,"sqls":35,"opps":14,"pipeline":590280},{"month":"2025-05","channel":"Field / Events","spend":63100,"mqls":111,"sqls":42,"opps":17,"pipeline":665709},{"month":"2025-05","channel":"Webinars","spend":21400,"mqls":61,"sqls":21,"opps":11,"pipeline":375746},{"month":"2025-06","channel":"Paid Search","spend":90700,"mqls":155,"sqls":64,"opps":29,"pipeline":1105230},{"month":"2025-06","channel":"Paid Social","spend":66900,"mqls":100,"sqls":39,"opps":17,"pipeline":759244},{"month":"2025-06","channel":"Organic / SEO","spend":33200,"mqls":144,"sqls":60,"opps":25,"pipeline":854209},{"month":"2025-06","channel":"Content Syndic.","spend":34800,"mqls":58,"sqls":23,"opps":10,"pipeline":389869},{"month":"2025-06","channel":"Review Sites (G2)","spend":30500,"mqls":99,"sqls":35,"opps":17,"pipeline":667242},{"month":"2025-06","channel":"Lifecycle / Email","spend":24800,"mqls":115,"sqls":52,"opps":28,"pipeline":1082456},{"month":"2025-06","channel":"Partner","spend":33700,"mqls":109,"sqls":39,"opps":19,"pipeline":813615},{"month":"2025-06","channel":"Field / Events","spend":61100,"mqls":95,"sqls":41,"opps":20,"pipeline":804880},{"month":"2025-06","channel":"Webinars","spend":24400,"mqls":64,"sqls":29,"opps":13,"pipeline":512912},{"month":"2025-07","channel":"Paid Search","spend":93100,"mqls":156,"sqls":54,"opps":26,"pipeline":1073436},{"month":"2025-07","channel":"Paid Social","spend":66100,"mqls":93,"sqls":33,"opps":14,"pipeline":629668},{"month":"2025-07","channel":"Organic / SEO","spend":32900,"mqls":138,"sqls":58,"opps":24,"pipeline":1059261},{"month":"2025-07","channel":"Content Syndic.","spend":34700,"mqls":61,"sqls":25,"opps":12,"pipeline":513173},{"month":"2025-07","channel":"Review Sites (G2)","spend":30500,"mqls":97,"sqls":38,"opps":20,"pipeline":814672},{"month":"2025-07","channel":"Lifecycle / Email","spend":28100,"mqls":142,"sqls":49,"opps":26,"pipeline":1074590},{"month":"2025-07","channel":"Partner","spend":30500,"mqls":94,"sqls":33,"opps":17,"pipeline":653158},{"month":"2025-07","channel":"Field / Events","spend":61200,"mqls":95,"sqls":42,"opps":22,"pipeline":790547},{"month":"2025-07","channel":"Webinars","spend":20200,"mqls":55,"sqls":22,"opps":11,"pipeline":404148},{"month":"2025-08","channel":"Paid Search","spend":78800,"mqls":151,"sqls":65,"opps":32,"pipeline":1247468},{"month":"2025-08","channel":"Paid Social","spend":60700,"mqls":101,"sqls":40,"opps":18,"pipeline":682626},{"month":"2025-08","channel":"Organic / SEO","spend":31900,"mqls":127,"sqls":48,"opps":23,"pipeline":858682},{"month":"2025-08","channel":"Content Syndic.","spend":36400,"mqls":61,"sqls":27,"opps":12,"pipeline":432210},{"month":"2025-08","channel":"Review Sites (G2)","spend":25600,"mqls":84,"sqls":29,"opps":14,"pipeline":525345},{"month":"2025-08","channel":"Lifecycle / Email","spend":25500,"mqls":117,"sqls":47,"opps":25,"pipeline":861835},{"month":"2025-08","channel":"Partner","spend":28900,"mqls":96,"sqls":40,"opps":18,"pipeline":794888},{"month":"2025-08","channel":"Field / Events","spend":55600,"mqls":97,"sqls":38,"opps":18,"pipeline":688316},{"month":"2025-08","channel":"Webinars","spend":22400,"mqls":59,"sqls":26,"opps":13,"pipeline":495175},{"month":"2025-09","channel":"Paid Search","spend":92100,"mqls":158,"sqls":55,"opps":28,"pipeline":1054613},{"month":"2025-09","channel":"Paid Social","spend":63400,"mqls":105,"sqls":45,"opps":22,"pipeline":791480},{"month":"2025-09","channel":"Organic / SEO","spend":32900,"mqls":147,"sqls":61,"opps":32,"pipeline":1139773},{"month":"2025-09","channel":"Content Syndic.","spend":35300,"mqls":56,"sqls":22,"opps":11,"pipeline":504409},{"month":"2025-09","channel":"Review Sites (G2)","spend":27800,"mqls":96,"sqls":41,"opps":18,"pipeline":627639},{"month":"2025-09","channel":"Lifecycle / Email","spend":24600,"mqls":126,"sqls":51,"opps":22,"pipeline":833604},{"month":"2025-09","channel":"Partner","spend":29300,"mqls":97,"sqls":40,"opps":20,"pipeline":826767},{"month":"2025-09","channel":"Field / Events","spend":55300,"mqls":97,"sqls":40,"opps":19,"pipeline":860191},{"month":"2025-09","channel":"Webinars","spend":21400,"mqls":62,"sqls":28,"opps":13,"pipeline":555976},{"month":"2025-10","channel":"Paid Search","spend":86900,"mqls":170,"sqls":61,"opps":33,"pipeline":1472462},{"month":"2025-10","channel":"Paid Social","spend":67500,"mqls":107,"sqls":43,"opps":18,"pipeline":772202},{"month":"2025-10","channel":"Organic / SEO","spend":34200,"mqls":137,"sqls":47,"opps":24,"pipeline":831529},{"month":"2025-10","channel":"Content Syndic.","spend":36900,"mqls":63,"sqls":25,"opps":10,"pipeline":386375},{"month":"2025-10","channel":"Review Sites (G2)","spend":30200,"mqls":97,"sqls":39,"opps":18,"pipeline":750457},{"month":"2025-10","channel":"Lifecycle / Email","spend":23300,"mqls":111,"sqls":46,"opps":21,"pipeline":884630},{"month":"2025-10","channel":"Partner","spend":34300,"mqls":97,"sqls":34,"opps":16,"pipeline":545370},{"month":"2025-10","channel":"Field / Events","spend":55000,"mqls":92,"sqls":32,"opps":13,"pipeline":575004},{"month":"2025-10","channel":"Webinars","spend":22400,"mqls":58,"sqls":25,"opps":13,"pipeline":504970},{"month":"2025-11","channel":"Paid Search","spend":97400,"mqls":164,"sqls":69,"opps":29,"pipeline":1099820},{"month":"2025-11","channel":"Paid Social","spend":66000,"mqls":96,"sqls":34,"opps":15,"pipeline":554633},{"month":"2025-11","channel":"Organic / SEO","spend":37400,"mqls":151,"sqls":53,"opps":24,"pipeline":977906},{"month":"2025-11","channel":"Content Syndic.","spend":42400,"mqls":68,"sqls":29,"opps":14,"pipeline":555245},{"month":"2025-11","channel":"Review Sites (G2)","spend":29400,"mqls":98,"sqls":35,"opps":15,"pipeline":608647},{"month":"2025-11","channel":"Lifecycle / Email","spend":28500,"mqls":133,"sqls":50,"opps":26,"pipeline":1103358},{"month":"2025-11","channel":"Partner","spend":34200,"mqls":109,"sqls":39,"opps":20,"pipeline":833682},{"month":"2025-11","channel":"Field / Events","spend":63000,"mqls":99,"sqls":36,"opps":19,"pipeline":838609},{"month":"2025-11","channel":"Webinars","spend":24200,"mqls":67,"sqls":27,"opps":12,"pipeline":511982},{"month":"2025-12","channel":"Paid Search","spend":105200,"mqls":163,"sqls":63,"opps":32,"pipeline":1409076},{"month":"2025-12","channel":"Paid Social","spend":77900,"mqls":103,"sqls":37,"opps":16,"pipeline":671604},{"month":"2025-12","channel":"Organic / SEO","spend":33500,"mqls":147,"sqls":64,"opps":34,"pipeline":1425375},{"month":"2025-12","channel":"Content Syndic.","spend":38300,"mqls":66,"sqls":27,"opps":14,"pipeline":615206},{"month":"2025-12","channel":"Review Sites (G2)","spend":31600,"mqls":94,"sqls":42,"opps":18,"pipeline":802139},{"month":"2025-12","channel":"Lifecycle / Email","spend":28000,"mqls":140,"sqls":50,"opps":27,"pipeline":1173319},{"month":"2025-12","channel":"Partner","spend":36400,"mqls":104,"sqls":44,"opps":22,"pipeline":915779},{"month":"2025-12","channel":"Field / Events","spend":71300,"mqls":113,"sqls":39,"opps":19,"pipeline":814557},{"month":"2025-12","channel":"Webinars","spend":24100,"mqls":66,"sqls":23,"opps":12,"pipeline":489590},{"month":"2026-01","channel":"Paid Search","spend":115300,"mqls":195,"sqls":77,"opps":36,"pipeline":1317016},{"month":"2026-01","channel":"Paid Social","spend":78300,"mqls":101,"sqls":43,"opps":20,"pipeline":835964},{"month":"2026-01","channel":"Organic / SEO","spend":43500,"mqls":172,"sqls":77,"opps":40,"pipeline":1791200},{"month":"2026-01","channel":"Content Syndic.","spend":46300,"mqls":67,"sqls":30,"opps":13,"pipeline":558421},{"month":"2026-01","channel":"Review Sites (G2)","spend":31500,"mqls":103,"sqls":42,"opps":19,"pipeline":659944},{"month":"2026-01","channel":"Lifecycle / Email","spend":29000,"mqls":146,"sqls":58,"opps":24,"pipeline":894467},{"month":"2026-01","channel":"Partner","spend":42100,"mqls":120,"sqls":49,"opps":25,"pipeline":922804},{"month":"2026-01","channel":"Field / Events","spend":72500,"mqls":118,"sqls":54,"opps":25,"pipeline":1071645},{"month":"2026-01","channel":"Webinars","spend":29200,"mqls":71,"sqls":31,"opps":16,"pipeline":597924},{"month":"2026-02","channel":"Paid Search","spend":114900,"mqls":173,"sqls":68,"opps":33,"pipeline":1308016},{"month":"2026-02","channel":"Paid Social","spend":79400,"mqls":108,"sqls":48,"opps":23,"pipeline":912344},{"month":"2026-02","channel":"Organic / SEO","spend":41700,"mqls":161,"sqls":64,"opps":29,"pipeline":1287256},{"month":"2026-02","channel":"Content Syndic.","spend":49900,"mqls":66,"sqls":28,"opps":14,"pipeline":506425},{"month":"2026-02","channel":"Review Sites (G2)","spend":39900,"mqls":113,"sqls":51,"opps":22,"pipeline":790499},{"month":"2026-02","channel":"Lifecycle / Email","spend":33600,"mqls":153,"sqls":55,"opps":29,"pipeline":1307422},{"month":"2026-02","channel":"Partner","spend":42000,"mqls":117,"sqls":45,"opps":20,"pipeline":791801},{"month":"2026-02","channel":"Field / Events","spend":77100,"mqls":118,"sqls":44,"opps":22,"pipeline":948237},{"month":"2026-02","channel":"Webinars","spend":25500,"mqls":69,"sqls":29,"opps":15,"pipeline":637180},{"month":"2026-03","channel":"Paid Search","spend":113000,"mqls":174,"sqls":60,"opps":32,"pipeline":1204550},{"month":"2026-03","channel":"Paid Social","spend":78900,"mqls":109,"sqls":42,"opps":21,"pipeline":822008},{"month":"2026-03","channel":"Organic / SEO","spend":40700,"mqls":164,"sqls":65,"opps":34,"pipeline":1261041},{"month":"2026-03","channel":"Content Syndic.","spend":46900,"mqls":64,"sqls":22,"opps":9,"pipeline":400029},{"month":"2026-03","channel":"Review Sites (G2)","spend":36900,"mqls":107,"sqls":43,"opps":23,"pipeline":946454},{"month":"2026-03","channel":"Lifecycle / Email","spend":37300,"mqls":154,"sqls":60,"opps":31,"pipeline":1101222},{"month":"2026-03","channel":"Partner","spend":40000,"mqls":112,"sqls":43,"opps":20,"pipeline":837459},{"month":"2026-03","channel":"Field / Events","spend":79200,"mqls":115,"sqls":47,"opps":24,"pipeline":879447},{"month":"2026-03","channel":"Webinars","spend":26300,"mqls":67,"sqls":23,"opps":11,"pipeline":390999},{"month":"2026-04","channel":"Paid Search","spend":106600,"mqls":186,"sqls":80,"opps":38,"pipeline":1408885},{"month":"2026-04","channel":"Paid Social","spend":86400,"mqls":111,"sqls":40,"opps":17,"pipeline":591836},{"month":"2026-04","channel":"Organic / SEO","spend":40800,"mqls":155,"sqls":55,"opps":23,"pipeline":1038065},{"month":"2026-04","channel":"Content Syndic.","spend":52400,"mqls":73,"sqls":26,"opps":11,"pipeline":378134},{"month":"2026-04","channel":"Review Sites (G2)","spend":39200,"mqls":109,"sqls":37,"opps":19,"pipeline":860463},{"month":"2026-04","channel":"Lifecycle / Email","spend":32400,"mqls":161,"sqls":63,"opps":29,"pipeline":1225792},{"month":"2026-04","channel":"Partner","spend":47000,"mqls":132,"sqls":46,"opps":22,"pipeline":972747},{"month":"2026-04","channel":"Field / Events","spend":78700,"mqls":113,"sqls":47,"opps":19,"pipeline":760884},{"month":"2026-04","channel":"Webinars","spend":31400,"mqls":75,"sqls":31,"opps":16,"pipeline":606951}],"saturation":{"Paid Search":{"k":66000,"scale":22852349,"avg_month_spend":97000,"total_spend":1746000,"total_pipeline":22852349,"color":"#4F7CFF","role":"discovery"},"Paid Social":{"k":50000,"scale":13623527,"avg_month_spend":70533,"total_spend":1269600,"total_pipeline":13623527,"color":"#7C5CFF","role":"discovery"},"Organic / SEO":{"k":110000,"scale":19093230,"avg_month_spend":34756,"total_spend":625600,"total_pipeline":19093230,"color":"#1FB8A6","role":"discovery"},"Content Syndic.":{"k":36000,"scale":8417196,"avg_month_spend":40133,"total_spend":722400,"total_pipeline":8417196,"color":"#E8943A","role":"nurture"},"Review Sites (G2)":{"k":60000,"scale":12937114,"avg_month_spend":30911,"total_spend":556400,"total_pipeline":12937114,"color":"#E0556E","role":"nurture"},"Lifecycle / Email":{"k":150000,"scale":18385300,"avg_month_spend":27406,"total_spend":493300,"total_pipeline":18385300,"color":"#36B5E8","role":"nurture"},"Partner":{"k":65000,"scale":13957276,"avg_month_spend":34939,"total_spend":628900,"total_pipeline":13957276,"color":"#9BBF30","role":"closing"},"Field / Events":{"k":50000,"scale":13949050,"avg_month_spend":64161,"total_spend":1154900,"total_pipeline":13949050,"color":"#C0853A","role":"closing"},"Webinars":{"k":40000,"scale":8477463,"avg_month_spend":23639,"total_spend":425500,"total_pipeline":8477463,"color":"#5AA8C0","role":"nurture"}},"opportunities":[{"journey":[{"ch":"Organic / SEO","dbc":70.4},{"ch":"Review Sites (G2)","dbc":66.3},{"ch":"Partner","dbc":27.5}],"arr":20914},{"journey":[{"ch":"Paid Search","dbc":109.5},{"ch":"Lifecycle / Email","dbc":101.3},{"ch":"Paid Social","dbc":69.7},{"ch":"Field / Events","dbc":66.1},{"ch":"Paid Social","dbc":20.4},{"ch":"Webinars","dbc":18.9}],"arr":57731},{"journey":[{"ch":"Lifecycle / Email","dbc":88.8},{"ch":"Lifecycle / Email","dbc":41.2},{"ch":"Webinars","dbc":19.1}],"arr":16189},{"journey":[{"ch":"Organic / SEO","dbc":111.3},{"ch":"Partner","dbc":71.8},{"ch":"Paid Social","dbc":52.3},{"ch":"Paid Search","dbc":36.3},{"ch":"Field / Events","dbc":29.3},{"ch":"Paid Social","dbc":25.5},{"ch":"Partner","dbc":5.3}],"arr":75805},{"journey":[{"ch":"Organic / SEO","dbc":116.4},{"ch":"Partner","dbc":18.2}],"arr":17017},{"journey":[{"ch":"Lifecycle / Email","dbc":36.8},{"ch":"Field / Events","dbc":21.1},{"ch":"Paid Social","dbc":18.1},{"ch":"Lifecycle / Email","dbc":16.6},{"ch":"Review Sites (G2)","dbc":9.4}],"arr":21743},{"journey":[{"ch":"Partner","dbc":114.4},{"ch":"Field / Events","dbc":68.8}],"arr":37441},{"journey":[{"ch":"Paid Search","dbc":137.2},{"ch":"Partner","dbc":117.4}],"arr":37624},{"journey":[{"ch":"Organic / SEO","dbc":104.4},{"ch":"Review Sites (G2)","dbc":96.8}],"arr":15741},{"journey":[{"ch":"Paid Search","dbc":55.6},{"ch":"Field / Events","dbc":53.6},{"ch":"Field / Events","dbc":42.8},{"ch":"Content Syndic.","dbc":24.9},{"ch":"Lifecycle / Email","dbc":23.5},{"ch":"Partner","dbc":14.9},{"ch":"Organic / SEO","dbc":8.9}],"arr":31588},{"journey":[{"ch":"Organic / SEO","dbc":86.7},{"ch":"Content Syndic.","dbc":57.3},{"ch":"Review Sites (G2)","dbc":49.5},{"ch":"Organic / SEO","dbc":9.5}],"arr":39825},{"journey":[{"ch":"Organic / SEO","dbc":100.0},{"ch":"Content Syndic.","dbc":58.4},{"ch":"Partner","dbc":42.1},{"ch":"Partner","dbc":36.4}],"arr":17940},{"journey":[{"ch":"Organic / SEO","dbc":82.7},{"ch":"Field / Events","dbc":54.5},{"ch":"Partner","dbc":52.3},{"ch":"Lifecycle / Email","dbc":23.5},{"ch":"Field / Events","dbc":17.2}],"arr":73865},{"journey":[{"ch":"Paid Social","dbc":105.1},{"ch":"Review Sites (G2)","dbc":44.0},{"ch":"Webinars","dbc":11.7},{"ch":"Partner","dbc":9.3}],"arr":65111},{"journey":[{"ch":"Lifecycle / Email","dbc":54.8},{"ch":"Lifecycle / Email","dbc":50.1},{"ch":"Partner","dbc":41.5},{"ch":"Review Sites (G2)","dbc":24.2}],"arr":16318},{"journey":[{"ch":"Lifecycle / Email","dbc":118.2},{"ch":"Partner","dbc":53.5},{"ch":"Partner","dbc":41.1}],"arr":73022},{"journey":[{"ch":"Lifecycle / Email","dbc":18.2},{"ch":"Field / Events","dbc":13.4},{"ch":"Partner","dbc":12.8},{"ch":"Webinars","dbc":10.5},{"ch":"Partner","dbc":9.4},{"ch":"Paid Search","dbc":5.8},{"ch":"Field / Events","dbc":3.0}],"arr":54911},{"journey":[{"ch":"Lifecycle / Email","dbc":13.8},{"ch":"Paid Social","dbc":13.6},{"ch":"Organic / SEO","dbc":13.1},{"ch":"Partner","dbc":6.6},{"ch":"Partner","dbc":3.8},{"ch":"Partner","dbc":3.2}],"arr":15674},{"journey":[{"ch":"Review Sites (G2)","dbc":65.4},{"ch":"Lifecycle / Email","dbc":48.8},{"ch":"Field / Events","dbc":7.4}],"arr":18412},{"journey":[{"ch":"Paid Social","dbc":109.5},{"ch":"Lifecycle / Email","dbc":105.5},{"ch":"Lifecycle / Email","dbc":90.2},{"ch":"Field / Events","dbc":87.6},{"ch":"Lifecycle / Email","dbc":76.2},{"ch":"Paid Search","dbc":60.9}],"arr":74525},{"journey":[{"ch":"Paid Search","dbc":22.8},{"ch":"Review Sites (G2)","dbc":4.6},{"ch":"Partner","dbc":0.9}],"arr":15796},{"journey":[{"ch":"Paid Search","dbc":62.9},{"ch":"Partner","dbc":51.2},{"ch":"Content Syndic.","dbc":31.4},{"ch":"Lifecycle / Email","dbc":28.8},{"ch":"Field / Events","dbc":22.2}],"arr":75206},{"journey":[{"ch":"Paid Social","dbc":18.9},{"ch":"Review Sites (G2)","dbc":4.4},{"ch":"Paid Search","dbc":3.7},{"ch":"Field / Events","dbc":1.4}],"arr":72900},{"journey":[{"ch":"Paid Social","dbc":75.7},{"ch":"Partner","dbc":40.4}],"arr":53912},{"journey":[{"ch":"Paid Search","dbc":71.9},{"ch":"Lifecycle / Email","dbc":68.9},{"ch":"Paid Social","dbc":33.9}],"arr":18390},{"journey":[{"ch":"Webinars","dbc":69.8},{"ch":"Webinars","dbc":63.7},{"ch":"Partner","dbc":61.6}],"arr":41393},{"journey":[{"ch":"Organic / SEO","dbc":28.9},{"ch":"Content Syndic.","dbc":20.0}],"arr":54874},{"journey":[{"ch":"Paid Search","dbc":26.8},{"ch":"Lifecycle / Email","dbc":26.0},{"ch":"Paid Social","dbc":19.1},{"ch":"Webinars","dbc":5.6}],"arr":21332},{"journey":[{"ch":"Organic / SEO","dbc":31.9},{"ch":"Webinars","dbc":7.8},{"ch":"Content Syndic.","dbc":6.6},{"ch":"Lifecycle / Email","dbc":5.2}],"arr":32525},{"journey":[{"ch":"Organic / SEO","dbc":59.1},{"ch":"Organic / SEO","dbc":26.2},{"ch":"Content Syndic.","dbc":8.7}],"arr":28954},{"journey":[{"ch":"Content Syndic.","dbc":20.8}],"arr":20561},{"journey":[{"ch":"Lifecycle / Email","dbc":48.0},{"ch":"Lifecycle / Email","dbc":44.2},{"ch":"Field / Events","dbc":43.6}],"arr":167150},{"journey":[{"ch":"Paid Social","dbc":78.3},{"ch":"Content Syndic.","dbc":64.1},{"ch":"Webinars","dbc":62.0},{"ch":"Content Syndic.","dbc":40.9},{"ch":"Field / Events","dbc":4.2}],"arr":18625},{"journey":[{"ch":"Paid Social","dbc":84.8},{"ch":"Webinars","dbc":66.5},{"ch":"Paid Social","dbc":57.1},{"ch":"Review Sites (G2)","dbc":0.9}],"arr":17954},{"journey":[{"ch":"Paid Search","dbc":153.2},{"ch":"Lifecycle / Email","dbc":152.8},{"ch":"Paid Search","dbc":149.1},{"ch":"Review Sites (G2)","dbc":95.3},{"ch":"Webinars","dbc":80.1},{"ch":"Partner","dbc":22.0}],"arr":42424},{"journey":[{"ch":"Lifecycle / Email","dbc":45.6},{"ch":"Lifecycle / Email","dbc":26.9},{"ch":"Field / Events","dbc":20.0}],"arr":20698},{"journey":[{"ch":"Paid Search","dbc":27.1},{"ch":"Content Syndic.","dbc":10.0},{"ch":"Review Sites (G2)","dbc":8.7}],"arr":15690},{"journey":[{"ch":"Paid Search","dbc":34.7},{"ch":"Paid Social","dbc":29.5},{"ch":"Webinars","dbc":28.4},{"ch":"Webinars","dbc":23.4},{"ch":"Webinars","dbc":10.3}],"arr":158960},{"journey":[{"ch":"Paid Search","dbc":40.2},{"ch":"Content Syndic.","dbc":30.0},{"ch":"Organic / SEO","dbc":20.7},{"ch":"Review Sites (G2)","dbc":20.0},{"ch":"Content Syndic.","dbc":11.1},{"ch":"Partner","dbc":5.4}],"arr":36625},{"journey":[{"ch":"Review Sites (G2)","dbc":14.5},{"ch":"Partner","dbc":11.0}],"arr":15649},{"journey":[{"ch":"Paid Social","dbc":22.7},{"ch":"Webinars","dbc":12.6},{"ch":"Field / Events","dbc":10.2}],"arr":33313},{"journey":[{"ch":"Paid Social","dbc":84.4},{"ch":"Paid Search","dbc":84.1},{"ch":"Webinars","dbc":74.3},{"ch":"Review Sites (G2)","dbc":67.8},{"ch":"Review Sites (G2)","dbc":57.6},{"ch":"Review Sites (G2)","dbc":40.4}],"arr":18654},{"journey":[{"ch":"Paid Search","dbc":11.2},{"ch":"Webinars","dbc":9.2},{"ch":"Review Sites (G2)","dbc":4.7},{"ch":"Review Sites (G2)","dbc":4.5}],"arr":16502},{"journey":[{"ch":"Organic / SEO","dbc":60.2},{"ch":"Content Syndic.","dbc":9.2}],"arr":63268},{"journey":[{"ch":"Paid Search","dbc":138.1}],"arr":35916},{"journey":[{"ch":"Paid Search","dbc":20.7},{"ch":"Field / Events","dbc":19.8},{"ch":"Paid Social","dbc":4.7}],"arr":22101},{"journey":[{"ch":"Paid Search","dbc":80.7},{"ch":"Organic / SEO","dbc":28.5},{"ch":"Partner","dbc":23.4}],"arr":21535},{"journey":[{"ch":"Paid Search","dbc":45.4},{"ch":"Webinars","dbc":21.2},{"ch":"Webinars","dbc":19.6},{"ch":"Review Sites (G2)","dbc":4.1},{"ch":"Partner","dbc":3.3}],"arr":34064},{"journey":[{"ch":"Organic / SEO","dbc":25.8},{"ch":"Partner","dbc":20.1},{"ch":"Lifecycle / Email","dbc":18.1},{"ch":"Partner","dbc":11.3},{"ch":"Lifecycle / Email","dbc":6.8},{"ch":"Organic / SEO","dbc":6.7}],"arr":37189},{"journey":[{"ch":"Organic / SEO","dbc":59.2},{"ch":"Field / Events","dbc":48.9},{"ch":"Organic / SEO","dbc":44.2},{"ch":"Content Syndic.","dbc":39.6},{"ch":"Content Syndic.","dbc":23.1},{"ch":"Content Syndic.","dbc":16.7}],"arr":40569},{"journey":[{"ch":"Partner","dbc":9.6},{"ch":"Lifecycle / Email","dbc":5.5},{"ch":"Review Sites (G2)","dbc":5.5},{"ch":"Paid Search","dbc":5.0},{"ch":"Content Syndic.","dbc":4.2},{"ch":"Field / Events","dbc":3.8},{"ch":"Partner","dbc":3.7}],"arr":29730},{"journey":[{"ch":"Organic / SEO","dbc":95.1},{"ch":"Content Syndic.","dbc":89.2},{"ch":"Lifecycle / Email","dbc":57.5},{"ch":"Field / Events","dbc":20.2}],"arr":38453},{"journey":[{"ch":"Webinars","dbc":15.5},{"ch":"Content Syndic.","dbc":15.4},{"ch":"Lifecycle / Email","dbc":11.8},{"ch":"Review Sites (G2)","dbc":11.2},{"ch":"Webinars","dbc":2.6},{"ch":"Partner","dbc":1.0},{"ch":"Paid Search","dbc":0.6}],"arr":33437},{"journey":[{"ch":"Review Sites (G2)","dbc":59.0},{"ch":"Paid Search","dbc":57.8},{"ch":"Review Sites (G2)","dbc":40.3},{"ch":"Partner","dbc":31.8}],"arr":21212},{"journey":[{"ch":"Organic / SEO","dbc":77.7},{"ch":"Webinars","dbc":74.8}],"arr":127985},{"journey":[{"ch":"Organic / SEO","dbc":82.5},{"ch":"Webinars","dbc":69.5},{"ch":"Partner","dbc":59.2},{"ch":"Content Syndic.","dbc":45.4},{"ch":"Partner","dbc":16.0}],"arr":36630},{"journey":[{"ch":"Review Sites (G2)","dbc":30.4},{"ch":"Field / Events","dbc":1.3}],"arr":18978},{"journey":[{"ch":"Organic / SEO","dbc":16.4},{"ch":"Paid Social","dbc":15.6},{"ch":"Organic / SEO","dbc":15.3},{"ch":"Webinars","dbc":12.8},{"ch":"Partner","dbc":2.1}],"arr":30615},{"journey":[{"ch":"Organic / SEO","dbc":69.3},{"ch":"Webinars","dbc":49.1},{"ch":"Review Sites (G2)","dbc":45.9},{"ch":"Field / Events","dbc":22.2}],"arr":31683},{"journey":[{"ch":"Paid Social","dbc":55.4},{"ch":"Webinars","dbc":39.6},{"ch":"Field / Events","dbc":23.8}],"arr":15785},{"journey":[{"ch":"Paid Social","dbc":58.8},{"ch":"Webinars","dbc":39.1},{"ch":"Content Syndic.","dbc":6.5}],"arr":16481},{"journey":[{"ch":"Organic / SEO","dbc":44.8},{"ch":"Review Sites (G2)","dbc":21.2},{"ch":"Paid Search","dbc":17.2},{"ch":"Content Syndic.","dbc":16.2},{"ch":"Lifecycle / Email","dbc":13.6},{"ch":"Partner","dbc":3.4}],"arr":17582},{"journey":[{"ch":"Organic / SEO","dbc":37.0},{"ch":"Field / Events","dbc":21.0},{"ch":"Review Sites (G2)","dbc":9.5}],"arr":34509},{"journey":[{"ch":"Paid Search","dbc":131.5},{"ch":"Organic / SEO","dbc":111.7},{"ch":"Review Sites (G2)","dbc":106.5},{"ch":"Review Sites (G2)","dbc":101.1},{"ch":"Webinars","dbc":31.3},{"ch":"Partner","dbc":24.7}],"arr":21003},{"journey":[{"ch":"Paid Social","dbc":39.2}],"arr":22425},{"journey":[{"ch":"Organic / SEO","dbc":112.6},{"ch":"Lifecycle / Email","dbc":80.4},{"ch":"Partner","dbc":79.4},{"ch":"Review Sites (G2)","dbc":57.9},{"ch":"Paid Social","dbc":27.1},{"ch":"Lifecycle / Email","dbc":7.0},{"ch":"Partner","dbc":2.7}],"arr":17283},{"journey":[{"ch":"Lifecycle / Email","dbc":95.5},{"ch":"Content Syndic.","dbc":21.0},{"ch":"Partner","dbc":20.5},{"ch":"Field / Events","dbc":19.5},{"ch":"Partner","dbc":2.1}],"arr":42022},{"journey":[{"ch":"Review Sites (G2)","dbc":60.2},{"ch":"Content Syndic.","dbc":55.4},{"ch":"Paid Search","dbc":19.5}],"arr":15937},{"journey":[{"ch":"Partner","dbc":123.7},{"ch":"Webinars","dbc":119.6},{"ch":"Review Sites (G2)","dbc":69.5},{"ch":"Lifecycle / Email","dbc":25.5}],"arr":75853},{"journey":[{"ch":"Content Syndic.","dbc":94.1},{"ch":"Review Sites (G2)","dbc":22.3},{"ch":"Content Syndic.","dbc":21.3},{"ch":"Webinars","dbc":9.2}],"arr":19693},{"journey":[{"ch":"Field / Events","dbc":80.1},{"ch":"Content Syndic.","dbc":35.4},{"ch":"Field / Events","dbc":24.8}],"arr":19490},{"journey":[{"ch":"Lifecycle / Email","dbc":69.2},{"ch":"Lifecycle / Email","dbc":27.5},{"ch":"Lifecycle / Email","dbc":7.6}],"arr":21206},{"journey":[{"ch":"Webinars","dbc":65.3},{"ch":"Partner","dbc":57.4},{"ch":"Lifecycle / Email","dbc":52.2},{"ch":"Paid Search","dbc":42.0},{"ch":"Organic / SEO","dbc":41.2},{"ch":"Field / Events","dbc":3.6}],"arr":32792},{"journey":[{"ch":"Paid Social","dbc":104.0},{"ch":"Content Syndic.","dbc":90.3},{"ch":"Lifecycle / Email","dbc":40.8},{"ch":"Content Syndic.","dbc":40.1},{"ch":"Paid Social","dbc":6.1}],"arr":16937},{"journey":[{"ch":"Organic / SEO","dbc":78.2},{"ch":"Content Syndic.","dbc":9.9},{"ch":"Review Sites (G2)","dbc":4.4}],"arr":15765},{"journey":[{"ch":"Organic / SEO","dbc":26.0},{"ch":"Review Sites (G2)","dbc":23.6},{"ch":"Paid Search","dbc":13.5},{"ch":"Field / Events","dbc":2.1}],"arr":17356},{"journey":[{"ch":"Organic / SEO","dbc":27.9},{"ch":"Partner","dbc":18.5}],"arr":71164},{"journey":[{"ch":"Paid Social","dbc":80.5},{"ch":"Review Sites (G2)","dbc":75.0},{"ch":"Webinars","dbc":56.3}],"arr":58034},{"journey":[{"ch":"Content Syndic.","dbc":78.3},{"ch":"Lifecycle / Email","dbc":66.9},{"ch":"Review Sites (G2)","dbc":20.2},{"ch":"Paid Search","dbc":8.6}],"arr":21807},{"journey":[{"ch":"Paid Social","dbc":21.7},{"ch":"Webinars","dbc":11.4},{"ch":"Review Sites (G2)","dbc":10.1},{"ch":"Webinars","dbc":4.0}],"arr":18870},{"journey":[{"ch":"Lifecycle / Email","dbc":29.0},{"ch":"Field / Events","dbc":28.5},{"ch":"Webinars","dbc":14.9},{"ch":"Lifecycle / Email","dbc":12.1}],"arr":76408},{"journey":[{"ch":"Lifecycle / Email","dbc":117.4},{"ch":"Lifecycle / Email","dbc":99.0},{"ch":"Webinars","dbc":65.8},{"ch":"Content Syndic.","dbc":33.3}],"arr":21732},{"journey":[{"ch":"Paid Social","dbc":59.1},{"ch":"Field / Events","dbc":34.6}],"arr":18546},{"journey":[{"ch":"Review Sites (G2)","dbc":103.6},{"ch":"Lifecycle / Email","dbc":61.4},{"ch":"Paid Search","dbc":60.4},{"ch":"Content Syndic.","dbc":46.7},{"ch":"Field / Events","dbc":20.2}],"arr":53117},{"journey":[{"ch":"Paid Search","dbc":121.3},{"ch":"Field / Events","dbc":46.1},{"ch":"Partner","dbc":31.5},{"ch":"Field / Events","dbc":0.4}],"arr":29143},{"journey":[{"ch":"Content Syndic.","dbc":18.4},{"ch":"Field / Events","dbc":17.6},{"ch":"Field / Events","dbc":11.9},{"ch":"Paid Social","dbc":11.0},{"ch":"Review Sites (G2)","dbc":9.4},{"ch":"Partner","dbc":8.6}],"arr":53600},{"journey":[{"ch":"Review Sites (G2)","dbc":37.1},{"ch":"Review Sites (G2)","dbc":8.8},{"ch":"Field / Events","dbc":7.5}],"arr":76913},{"journey":[{"ch":"Organic / SEO","dbc":107.1},{"ch":"Review Sites (G2)","dbc":98.7},{"ch":"Field / Events","dbc":66.4},{"ch":"Paid Search","dbc":39.1},{"ch":"Field / Events","dbc":19.7}],"arr":65322},{"journey":[{"ch":"Organic / SEO","dbc":142.2},{"ch":"Review Sites (G2)","dbc":96.6},{"ch":"Paid Social","dbc":77.5},{"ch":"Field / Events","dbc":50.9}],"arr":34547},{"journey":[{"ch":"Organic / SEO","dbc":121.7},{"ch":"Content Syndic.","dbc":111.6},{"ch":"Paid Search","dbc":79.5},{"ch":"Organic / SEO","dbc":73.6},{"ch":"Webinars","dbc":24.2},{"ch":"Field / Events","dbc":10.5}],"arr":17700},{"journey":[{"ch":"Organic / SEO","dbc":130.2},{"ch":"Organic / SEO","dbc":118.1},{"ch":"Paid Social","dbc":105.5},{"ch":"Lifecycle / Email","dbc":104.2},{"ch":"Paid Search","dbc":102.8},{"ch":"Partner","dbc":67.4}],"arr":18792},{"journey":[{"ch":"Paid Social","dbc":33.4},{"ch":"Organic / SEO","dbc":20.5},{"ch":"Webinars","dbc":7.3},{"ch":"Review Sites (G2)","dbc":4.5}],"arr":156988},{"journey":[{"ch":"Organic / SEO","dbc":74.9},{"ch":"Webinars","dbc":33.9},{"ch":"Field / Events","dbc":21.0}],"arr":20131},{"journey":[{"ch":"Paid Search","dbc":109.9},{"ch":"Paid Social","dbc":45.1},{"ch":"Field / Events","dbc":40.1},{"ch":"Webinars","dbc":30.7},{"ch":"Review Sites (G2)","dbc":7.8}],"arr":15976},{"journey":[{"ch":"Paid Search","dbc":23.5},{"ch":"Lifecycle / Email","dbc":17.3},{"ch":"Content Syndic.","dbc":5.3},{"ch":"Partner","dbc":1.5},{"ch":"Field / Events","dbc":0.1}],"arr":53412},{"journey":[{"ch":"Paid Search","dbc":120.4},{"ch":"Webinars","dbc":91.8},{"ch":"Webinars","dbc":57.4},{"ch":"Content Syndic.","dbc":54.9}],"arr":39821},{"journey":[{"ch":"Organic / SEO","dbc":63.4},{"ch":"Organic / SEO","dbc":46.4},{"ch":"Lifecycle / Email","dbc":34.3}],"arr":17212},{"journey":[{"ch":"Lifecycle / Email","dbc":23.5},{"ch":"Review Sites (G2)","dbc":8.0},{"ch":"Partner","dbc":4.3}],"arr":58506},{"journey":[{"ch":"Organic / SEO","dbc":67.0},{"ch":"Webinars","dbc":57.4},{"ch":"Partner","dbc":5.6}],"arr":54589},{"journey":[{"ch":"Organic / SEO","dbc":58.2},{"ch":"Lifecycle / Email","dbc":54.3},{"ch":"Content Syndic.","dbc":53.3},{"ch":"Content Syndic.","dbc":14.6},{"ch":"Partner","dbc":13.1},{"ch":"Partner","dbc":6.4}],"arr":31801},{"journey":[{"ch":"Organic / SEO","dbc":88.8},{"ch":"Lifecycle / Email","dbc":86.7},{"ch":"Review Sites (G2)","dbc":81.7},{"ch":"Content Syndic.","dbc":74.2},{"ch":"Review Sites (G2)","dbc":66.3},{"ch":"Partner","dbc":13.6}],"arr":70645},{"journey":[{"ch":"Organic / SEO","dbc":108.4},{"ch":"Content Syndic.","dbc":64.1},{"ch":"Field / Events","dbc":49.9}],"arr":55263},{"journey":[{"ch":"Organic / SEO","dbc":114.1}],"arr":68922},{"journey":[{"ch":"Field / Events","dbc":114.2},{"ch":"Review Sites (G2)","dbc":50.1},{"ch":"Review Sites (G2)","dbc":13.0}],"arr":35904},{"journey":[{"ch":"Paid Social","dbc":113.6},{"ch":"Organic / SEO","dbc":52.5}],"arr":170049},{"journey":[{"ch":"Webinars","dbc":119.3},{"ch":"Lifecycle / Email","dbc":107.7},{"ch":"Field / Events","dbc":70.4},{"ch":"Content Syndic.","dbc":49.7},{"ch":"Field / Events","dbc":22.5}],"arr":56821},{"journey":[{"ch":"Lifecycle / Email","dbc":65.3},{"ch":"Review Sites (G2)","dbc":55.0},{"ch":"Review Sites (G2)","dbc":11.7},{"ch":"Field / Events","dbc":4.5}],"arr":37971},{"journey":[{"ch":"Organic / SEO","dbc":104.6},{"ch":"Content Syndic.","dbc":83.1},{"ch":"Paid Search","dbc":77.7},{"ch":"Lifecycle / Email","dbc":33.3}],"arr":16504},{"journey":[{"ch":"Paid Search","dbc":103.4},{"ch":"Organic / SEO","dbc":54.0},{"ch":"Content Syndic.","dbc":51.1},{"ch":"Webinars","dbc":17.1},{"ch":"Review Sites (G2)","dbc":15.0},{"ch":"Paid Social","dbc":11.1},{"ch":"Organic / SEO","dbc":4.1}],"arr":35866},{"journey":[{"ch":"Paid Search","dbc":23.6},{"ch":"Paid Social","dbc":20.4},{"ch":"Lifecycle / Email","dbc":19.9},{"ch":"Field / Events","dbc":18.4}],"arr":41871},{"journey":[{"ch":"Webinars","dbc":53.4},{"ch":"Field / Events","dbc":43.3},{"ch":"Organic / SEO","dbc":28.9},{"ch":"Paid Search","dbc":20.9},{"ch":"Webinars","dbc":7.2},{"ch":"Paid Social","dbc":3.0}],"arr":15866},{"journey":[{"ch":"Paid Social","dbc":100.9},{"ch":"Lifecycle / Email","dbc":88.3},{"ch":"Organic / SEO","dbc":53.2},{"ch":"Paid Search","dbc":42.4},{"ch":"Review Sites (G2)","dbc":28.3},{"ch":"Field / Events","dbc":6.0}],"arr":21275},{"journey":[{"ch":"Paid Search","dbc":64.6},{"ch":"Partner","dbc":61.3},{"ch":"Paid Social","dbc":33.5},{"ch":"Review Sites (G2)","dbc":7.4}],"arr":60758},{"journey":[{"ch":"Organic / SEO","dbc":142.6},{"ch":"Organic / SEO","dbc":74.8},{"ch":"Paid Search","dbc":26.7},{"ch":"Review Sites (G2)","dbc":6.8}],"arr":36257},{"journey":[{"ch":"Organic / SEO","dbc":18.3},{"ch":"Lifecycle / Email","dbc":16.7},{"ch":"Content Syndic.","dbc":15.4},{"ch":"Webinars","dbc":9.1},{"ch":"Partner","dbc":9.0}],"arr":34751},{"journey":[{"ch":"Organic / SEO","dbc":135.3},{"ch":"Review Sites (G2)","dbc":116.2},{"ch":"Review Sites (G2)","dbc":105.5},{"ch":"Partner","dbc":84.4},{"ch":"Lifecycle / Email","dbc":49.3}],"arr":34089},{"journey":[{"ch":"Organic / SEO","dbc":67.6},{"ch":"Content Syndic.","dbc":49.2},{"ch":"Field / Events","dbc":42.8},{"ch":"Review Sites (G2)","dbc":27.8},{"ch":"Partner","dbc":12.0},{"ch":"Lifecycle / Email","dbc":1.2}],"arr":20996},{"journey":[{"ch":"Organic / SEO","dbc":121.7},{"ch":"Lifecycle / Email","dbc":80.4},{"ch":"Review Sites (G2)","dbc":55.8},{"ch":"Webinars","dbc":41.0},{"ch":"Partner","dbc":31.8},{"ch":"Field / Events","dbc":20.8},{"ch":"Partner","dbc":17.6}],"arr":76058},{"journey":[{"ch":"Organic / SEO","dbc":111.5},{"ch":"Field / Events","dbc":99.3},{"ch":"Field / Events","dbc":72.4},{"ch":"Paid Social","dbc":67.9},{"ch":"Content Syndic.","dbc":41.1}],"arr":20674},{"journey":[{"ch":"Paid Search","dbc":48.8},{"ch":"Lifecycle / Email","dbc":19.7},{"ch":"Lifecycle / Email","dbc":8.2},{"ch":"Review Sites (G2)","dbc":4.2}],"arr":62312},{"journey":[{"ch":"Webinars","dbc":40.8},{"ch":"Lifecycle / Email","dbc":33.9},{"ch":"Paid Search","dbc":17.6},{"ch":"Content Syndic.","dbc":14.2},{"ch":"Organic / SEO","dbc":13.3}],"arr":20741},{"journey":[{"ch":"Organic / SEO","dbc":19.6},{"ch":"Paid Social","dbc":9.9},{"ch":"Review Sites (G2)","dbc":7.1},{"ch":"Paid Social","dbc":1.7}],"arr":21849},{"journey":[{"ch":"Organic / SEO","dbc":64.9},{"ch":"Partner","dbc":35.3},{"ch":"Paid Social","dbc":24.2},{"ch":"Content Syndic.","dbc":6.7}],"arr":16451},{"journey":[{"ch":"Paid Social","dbc":52.4},{"ch":"Lifecycle / Email","dbc":22.0},{"ch":"Paid Social","dbc":14.0},{"ch":"Review Sites (G2)","dbc":7.6},{"ch":"Lifecycle / Email","dbc":6.4}],"arr":33943},{"journey":[{"ch":"Field / Events","dbc":13.0},{"ch":"Content Syndic.","dbc":10.4},{"ch":"Webinars","dbc":9.1},{"ch":"Field / Events","dbc":6.8}],"arr":15387},{"journey":[{"ch":"Paid Search","dbc":16.8}],"arr":18441},{"journey":[{"ch":"Paid Social","dbc":70.6},{"ch":"Field / Events","dbc":47.1},{"ch":"Review Sites (G2)","dbc":5.7},{"ch":"Paid Social","dbc":3.7},{"ch":"Lifecycle / Email","dbc":2.5}],"arr":29632},{"journey":[{"ch":"Lifecycle / Email","dbc":29.8},{"ch":"Webinars","dbc":29.4},{"ch":"Lifecycle / Email","dbc":20.9},{"ch":"Content Syndic.","dbc":10.6}],"arr":67321},{"journey":[{"ch":"Organic / SEO","dbc":13.9},{"ch":"Content Syndic.","dbc":11.1},{"ch":"Lifecycle / Email","dbc":10.3},{"ch":"Field / Events","dbc":7.4}],"arr":38046},{"journey":[{"ch":"Paid Social","dbc":85.1},{"ch":"Paid Social","dbc":63.0},{"ch":"Lifecycle / Email","dbc":44.6},{"ch":"Field / Events","dbc":24.5},{"ch":"Partner","dbc":17.7},{"ch":"Review Sites (G2)","dbc":10.0},{"ch":"Field / Events","dbc":2.9}],"arr":17862},{"journey":[{"ch":"Paid Search","dbc":40.0},{"ch":"Review Sites (G2)","dbc":36.8},{"ch":"Paid Social","dbc":25.8},{"ch":"Review Sites (G2)","dbc":22.2},{"ch":"Review Sites (G2)","dbc":16.2},{"ch":"Paid Search","dbc":7.6},{"ch":"Partner","dbc":4.2}],"arr":134649},{"journey":[{"ch":"Paid Social","dbc":60.9},{"ch":"Review Sites (G2)","dbc":56.3},{"ch":"Field / Events","dbc":27.0}],"arr":20498},{"journey":[{"ch":"Lifecycle / Email","dbc":78.2},{"ch":"Review Sites (G2)","dbc":49.6},{"ch":"Webinars","dbc":43.1},{"ch":"Field / Events","dbc":1.8}],"arr":29287},{"journey":[{"ch":"Organic / SEO","dbc":26.6},{"ch":"Partner","dbc":22.8},{"ch":"Lifecycle / Email","dbc":12.4},{"ch":"Paid Search","dbc":10.4},{"ch":"Partner","dbc":5.2}],"arr":17967},{"journey":[{"ch":"Review Sites (G2)","dbc":115.5},{"ch":"Field / Events","dbc":69.8}],"arr":36017},{"journey":[{"ch":"Paid Search","dbc":43.5},{"ch":"Review Sites (G2)","dbc":10.6},{"ch":"Field / Events","dbc":3.4}],"arr":20973},{"journey":[{"ch":"Paid Social","dbc":140.4},{"ch":"Content Syndic.","dbc":46.9},{"ch":"Partner","dbc":39.0}],"arr":72162},{"journey":[{"ch":"Review Sites (G2)","dbc":39.1},{"ch":"Lifecycle / Email","dbc":38.5},{"ch":"Partner","dbc":30.2}],"arr":31168},{"journey":[{"ch":"Paid Search","dbc":23.7},{"ch":"Paid Social","dbc":22.0},{"ch":"Review Sites (G2)","dbc":16.7},{"ch":"Partner","dbc":12.6},{"ch":"Webinars","dbc":10.0}],"arr":29394},{"journey":[{"ch":"Lifecycle / Email","dbc":65.0},{"ch":"Webinars","dbc":29.8},{"ch":"Lifecycle / Email","dbc":19.9},{"ch":"Paid Search","dbc":10.4},{"ch":"Paid Search","dbc":4.8}],"arr":149117},{"journey":[{"ch":"Field / Events","dbc":33.7},{"ch":"Webinars","dbc":23.0},{"ch":"Partner","dbc":3.8}],"arr":66205},{"journey":[{"ch":"Organic / SEO","dbc":22.5},{"ch":"Review Sites (G2)","dbc":15.1},{"ch":"Lifecycle / Email","dbc":9.5},{"ch":"Review Sites (G2)","dbc":7.7},{"ch":"Field / Events","dbc":7.4}],"arr":16498},{"journey":[{"ch":"Webinars","dbc":31.9},{"ch":"Content Syndic.","dbc":22.1},{"ch":"Lifecycle / Email","dbc":18.4},{"ch":"Paid Social","dbc":15.9},{"ch":"Field / Events","dbc":15.5}],"arr":29741},{"journey":[{"ch":"Webinars","dbc":99.4}],"arr":54707},{"journey":[{"ch":"Lifecycle / Email","dbc":19.5},{"ch":"Lifecycle / Email","dbc":16.3},{"ch":"Paid Social","dbc":7.0},{"ch":"Webinars","dbc":5.8},{"ch":"Partner","dbc":1.0}],"arr":42467},{"journey":[{"ch":"Review Sites (G2)","dbc":55.6},{"ch":"Field / Events","dbc":22.4},{"ch":"Field / Events","dbc":11.7},{"ch":"Field / Events","dbc":11.3}],"arr":74600},{"journey":[{"ch":"Organic / SEO","dbc":129.3},{"ch":"Field / Events","dbc":90.8},{"ch":"Webinars","dbc":52.9},{"ch":"Organic / SEO","dbc":3.7}],"arr":33982},{"journey":[{"ch":"Paid Search","dbc":128.0},{"ch":"Webinars","dbc":113.1},{"ch":"Organic / SEO","dbc":45.2},{"ch":"Field / Events","dbc":3.3}],"arr":35449},{"journey":[{"ch":"Paid Social","dbc":72.5},{"ch":"Content Syndic.","dbc":59.9},{"ch":"Partner","dbc":59.4}],"arr":39728},{"journey":[{"ch":"Organic / SEO","dbc":88.4},{"ch":"Field / Events","dbc":12.8}],"arr":37650},{"journey":[{"ch":"Review Sites (G2)","dbc":16.1},{"ch":"Lifecycle / Email","dbc":15.5},{"ch":"Field / Events","dbc":7.5},{"ch":"Organic / SEO","dbc":3.1}],"arr":38586},{"journey":[{"ch":"Review Sites (G2)","dbc":88.6},{"ch":"Content Syndic.","dbc":85.9},{"ch":"Webinars","dbc":72.3},{"ch":"Field / Events","dbc":30.1},{"ch":"Field / Events","dbc":25.0}],"arr":20471},{"journey":[{"ch":"Organic / SEO","dbc":110.3},{"ch":"Webinars","dbc":102.6},{"ch":"Partner","dbc":91.5},{"ch":"Partner","dbc":81.9},{"ch":"Paid Search","dbc":35.9}],"arr":17767},{"journey":[{"ch":"Review Sites (G2)","dbc":47.1},{"ch":"Organic / SEO","dbc":43.4},{"ch":"Webinars","dbc":41.1},{"ch":"Field / Events","dbc":12.9}],"arr":16584},{"journey":[{"ch":"Review Sites (G2)","dbc":73.1},{"ch":"Review Sites (G2)","dbc":68.8},{"ch":"Lifecycle / Email","dbc":58.4},{"ch":"Content Syndic.","dbc":33.7},{"ch":"Field / Events","dbc":16.2}],"arr":74959},{"journey":[{"ch":"Organic / SEO","dbc":49.0},{"ch":"Webinars","dbc":47.6},{"ch":"Organic / SEO","dbc":38.8},{"ch":"Lifecycle / Email","dbc":29.5},{"ch":"Review Sites (G2)","dbc":13.3},{"ch":"Field / Events","dbc":13.2},{"ch":"Content Syndic.","dbc":7.7}],"arr":36309},{"journey":[{"ch":"Organic / SEO","dbc":67.6},{"ch":"Partner","dbc":51.6},{"ch":"Lifecycle / Email","dbc":26.9},{"ch":"Paid Search","dbc":18.8},{"ch":"Review Sites (G2)","dbc":3.7}],"arr":16941},{"journey":[{"ch":"Paid Social","dbc":65.6},{"ch":"Review Sites (G2)","dbc":57.3},{"ch":"Content Syndic.","dbc":47.6},{"ch":"Webinars","dbc":33.2},{"ch":"Webinars","dbc":27.2},{"ch":"Webinars","dbc":17.5}],"arr":59405},{"journey":[{"ch":"Paid Search","dbc":34.8},{"ch":"Partner","dbc":33.0}],"arr":165438},{"journey":[{"ch":"Lifecycle / Email","dbc":27.5},{"ch":"Webinars","dbc":25.8},{"ch":"Field / Events","dbc":16.3},{"ch":"Content Syndic.","dbc":12.7},{"ch":"Field / Events","dbc":4.9},{"ch":"Partner","dbc":1.7}],"arr":30467},{"journey":[{"ch":"Paid Social","dbc":36.2},{"ch":"Lifecycle / Email","dbc":22.0},{"ch":"Content Syndic.","dbc":12.5},{"ch":"Lifecycle / Email","dbc":1.2}],"arr":20754},{"journey":[{"ch":"Paid Social","dbc":68.2},{"ch":"Paid Search","dbc":60.1},{"ch":"Review Sites (G2)","dbc":54.4},{"ch":"Review Sites (G2)","dbc":49.4},{"ch":"Webinars","dbc":43.0},{"ch":"Partner","dbc":39.4}],"arr":17317},{"journey":[{"ch":"Lifecycle / Email","dbc":61.6},{"ch":"Field / Events","dbc":44.6}],"arr":19222},{"journey":[{"ch":"Paid Search","dbc":24.1},{"ch":"Lifecycle / Email","dbc":0.5}],"arr":21478},{"journey":[{"ch":"Paid Social","dbc":68.8},{"ch":"Paid Search","dbc":63.6},{"ch":"Field / Events","dbc":19.2}],"arr":20343},{"journey":[{"ch":"Paid Search","dbc":90.6},{"ch":"Review Sites (G2)","dbc":34.0},{"ch":"Organic / SEO","dbc":8.2}],"arr":152275},{"journey":[{"ch":"Paid Search","dbc":34.2},{"ch":"Content Syndic.","dbc":32.3},{"ch":"Partner","dbc":30.5},{"ch":"Review Sites (G2)","dbc":26.1},{"ch":"Field / Events","dbc":19.2},{"ch":"Field / Events","dbc":10.7}],"arr":18771},{"journey":[{"ch":"Lifecycle / Email","dbc":65.1},{"ch":"Partner","dbc":7.0}],"arr":18094},{"journey":[{"ch":"Paid Social","dbc":35.3},{"ch":"Field / Events","dbc":26.8},{"ch":"Lifecycle / Email","dbc":1.0}],"arr":34852},{"journey":[{"ch":"Lifecycle / Email","dbc":108.0},{"ch":"Lifecycle / Email","dbc":104.8},{"ch":"Webinars","dbc":102.8},{"ch":"Content Syndic.","dbc":41.2},{"ch":"Webinars","dbc":31.8},{"ch":"Paid Search","dbc":18.4},{"ch":"Review Sites (G2)","dbc":2.3}],"arr":174277},{"journey":[{"ch":"Organic / SEO","dbc":81.7},{"ch":"Paid Social","dbc":71.6},{"ch":"Lifecycle / Email","dbc":69.5},{"ch":"Paid Search","dbc":37.8},{"ch":"Organic / SEO","dbc":22.1},{"ch":"Organic / SEO","dbc":4.0}],"arr":21576},{"journey":[{"ch":"Webinars","dbc":40.9}],"arr":15525},{"journey":[{"ch":"Field / Events","dbc":48.1},{"ch":"Content Syndic.","dbc":35.9},{"ch":"Partner","dbc":23.9}],"arr":22484},{"journey":[{"ch":"Paid Social","dbc":49.2},{"ch":"Lifecycle / Email","dbc":20.9},{"ch":"Webinars","dbc":17.6},{"ch":"Field / Events","dbc":8.8}],"arr":33020},{"journey":[{"ch":"Organic / SEO","dbc":71.1},{"ch":"Webinars","dbc":62.3},{"ch":"Field / Events","dbc":10.7}],"arr":19671},{"journey":[{"ch":"Field / Events","dbc":34.6},{"ch":"Lifecycle / Email","dbc":3.7}],"arr":20446},{"journey":[{"ch":"Paid Social","dbc":88.3},{"ch":"Review Sites (G2)","dbc":78.3},{"ch":"Webinars","dbc":61.8},{"ch":"Content Syndic.","dbc":40.5}],"arr":32637},{"journey":[{"ch":"Paid Social","dbc":96.8},{"ch":"Field / Events","dbc":79.1},{"ch":"Review Sites (G2)","dbc":77.4},{"ch":"Lifecycle / Email","dbc":71.0},{"ch":"Webinars","dbc":67.2},{"ch":"Webinars","dbc":30.7}],"arr":33664},{"journey":[{"ch":"Lifecycle / Email","dbc":158.8},{"ch":"Partner","dbc":135.8},{"ch":"Content Syndic.","dbc":109.4},{"ch":"Review Sites (G2)","dbc":81.0}],"arr":42228},{"journey":[{"ch":"Paid Social","dbc":114.5},{"ch":"Lifecycle / Email","dbc":92.2},{"ch":"Partner","dbc":58.1},{"ch":"Review Sites (G2)","dbc":52.1},{"ch":"Webinars","dbc":45.4},{"ch":"Partner","dbc":17.8}],"arr":20605},{"journey":[{"ch":"Organic / SEO","dbc":101.2},{"ch":"Lifecycle / Email","dbc":70.2},{"ch":"Partner","dbc":46.8},{"ch":"Partner","dbc":45.6},{"ch":"Lifecycle / Email","dbc":38.7}],"arr":16359},{"journey":[{"ch":"Paid Social","dbc":21.0},{"ch":"Field / Events","dbc":17.2},{"ch":"Webinars","dbc":16.9},{"ch":"Field / Events","dbc":15.1},{"ch":"Field / Events","dbc":14.4}],"arr":161712},{"journey":[{"ch":"Paid Search","dbc":25.5},{"ch":"Webinars","dbc":24.8},{"ch":"Content Syndic.","dbc":23.1},{"ch":"Webinars","dbc":16.5},{"ch":"Partner","dbc":12.7}],"arr":20030},{"journey":[{"ch":"Review Sites (G2)","dbc":65.6},{"ch":"Content Syndic.","dbc":54.8},{"ch":"Review Sites (G2)","dbc":51.6},{"ch":"Review Sites (G2)","dbc":34.2},{"ch":"Webinars","dbc":20.5},{"ch":"Partner","dbc":18.2},{"ch":"Partner","dbc":9.3}],"arr":22486},{"journey":[{"ch":"Webinars","dbc":18.1},{"ch":"Partner","dbc":15.7},{"ch":"Review Sites (G2)","dbc":5.5}],"arr":17839},{"journey":[{"ch":"Paid Search","dbc":143.8},{"ch":"Field / Events","dbc":100.0},{"ch":"Lifecycle / Email","dbc":85.0},{"ch":"Review Sites (G2)","dbc":65.5},{"ch":"Partner","dbc":63.9}],"arr":37807},{"journey":[{"ch":"Paid Search","dbc":12.7},{"ch":"Field / Events","dbc":3.6}],"arr":17277},{"journey":[{"ch":"Field / Events","dbc":112.7},{"ch":"Webinars","dbc":89.4},{"ch":"Field / Events","dbc":77.1},{"ch":"Webinars","dbc":28.3},{"ch":"Paid Search","dbc":24.4}],"arr":17598},{"journey":[{"ch":"Content Syndic.","dbc":87.9},{"ch":"Field / Events","dbc":87.0}],"arr":17195},{"journey":[{"ch":"Webinars","dbc":53.0}],"arr":18694},{"journey":[{"ch":"Lifecycle / Email","dbc":146.0},{"ch":"Organic / SEO","dbc":78.5},{"ch":"Lifecycle / Email","dbc":36.1},{"ch":"Review Sites (G2)","dbc":35.7}],"arr":39767},{"journey":[{"ch":"Paid Search","dbc":64.6},{"ch":"Lifecycle / Email","dbc":54.6},{"ch":"Organic / SEO","dbc":24.3},{"ch":"Content Syndic.","dbc":4.7}],"arr":30880},{"journey":[{"ch":"Content Syndic.","dbc":72.9},{"ch":"Organic / SEO","dbc":31.4},{"ch":"Partner","dbc":28.4},{"ch":"Webinars","dbc":18.9},{"ch":"Content Syndic.","dbc":9.3}],"arr":15819},{"journey":[{"ch":"Organic / SEO","dbc":70.9},{"ch":"Partner","dbc":58.6},{"ch":"Field / Events","dbc":14.3}],"arr":18078},{"journey":[{"ch":"Review Sites (G2)","dbc":142.2},{"ch":"Webinars","dbc":138.4},{"ch":"Paid Social","dbc":123.0},{"ch":"Field / Events","dbc":60.0},{"ch":"Webinars","dbc":57.8},{"ch":"Field / Events","dbc":38.6}],"arr":41151},{"journey":[{"ch":"Paid Search","dbc":105.7},{"ch":"Webinars","dbc":105.2},{"ch":"Paid Social","dbc":93.8},{"ch":"Partner","dbc":51.4}],"arr":20750},{"journey":[{"ch":"Paid Social","dbc":131.0},{"ch":"Paid Social","dbc":98.1}],"arr":20003},{"journey":[{"ch":"Partner","dbc":6.9},{"ch":"Partner","dbc":6.7}],"arr":55492},{"journey":[{"ch":"Paid Social","dbc":60.5},{"ch":"Field / Events","dbc":23.0}],"arr":38654},{"journey":[{"ch":"Lifecycle / Email","dbc":104.0},{"ch":"Partner","dbc":66.7},{"ch":"Paid Search","dbc":49.6}],"arr":18070},{"journey":[{"ch":"Webinars","dbc":60.7},{"ch":"Field / Events","dbc":48.5},{"ch":"Field / Events","dbc":20.1},{"ch":"Paid Social","dbc":1.0}],"arr":129711},{"journey":[{"ch":"Organic / SEO","dbc":118.5},{"ch":"Lifecycle / Email","dbc":48.0},{"ch":"Field / Events","dbc":30.2},{"ch":"Partner","dbc":25.4}],"arr":37038},{"journey":[{"ch":"Review Sites (G2)","dbc":127.3},{"ch":"Webinars","dbc":123.3},{"ch":"Content Syndic.","dbc":111.2},{"ch":"Content Syndic.","dbc":94.1},{"ch":"Paid Search","dbc":69.9},{"ch":"Review Sites (G2)","dbc":14.2}],"arr":15366},{"journey":[{"ch":"Organic / SEO","dbc":147.2},{"ch":"Webinars","dbc":130.1},{"ch":"Partner","dbc":67.1},{"ch":"Content Syndic.","dbc":28.4}],"arr":71499},{"journey":[{"ch":"Paid Search","dbc":80.5},{"ch":"Lifecycle / Email","dbc":62.9},{"ch":"Organic / SEO","dbc":40.8},{"ch":"Paid Social","dbc":37.9},{"ch":"Organic / SEO","dbc":9.4},{"ch":"Content Syndic.","dbc":4.5}],"arr":22215},{"journey":[{"ch":"Paid Social","dbc":76.5},{"ch":"Webinars","dbc":58.6},{"ch":"Review Sites (G2)","dbc":29.3},{"ch":"Paid Social","dbc":29.0},{"ch":"Webinars","dbc":19.4},{"ch":"Partner","dbc":13.8}],"arr":52922},{"journey":[{"ch":"Paid Social","dbc":133.3},{"ch":"Organic / SEO","dbc":104.3},{"ch":"Lifecycle / Email","dbc":76.4},{"ch":"Lifecycle / Email","dbc":58.9},{"ch":"Field / Events","dbc":17.4}],"arr":18242},{"journey":[{"ch":"Organic / SEO","dbc":15.9},{"ch":"Webinars","dbc":14.9},{"ch":"Review Sites (G2)","dbc":13.6},{"ch":"Webinars","dbc":6.4},{"ch":"Review Sites (G2)","dbc":6.1}],"arr":16762},{"journey":[{"ch":"Paid Search","dbc":67.8},{"ch":"Partner","dbc":20.8},{"ch":"Partner","dbc":16.6}],"arr":17238},{"journey":[{"ch":"Paid Search","dbc":116.9},{"ch":"Review Sites (G2)","dbc":87.7},{"ch":"Lifecycle / Email","dbc":18.3},{"ch":"Content Syndic.","dbc":15.0},{"ch":"Content Syndic.","dbc":10.9},{"ch":"Field / Events","dbc":3.4}],"arr":35913},{"journey":[{"ch":"Organic / SEO","dbc":69.6},{"ch":"Partner","dbc":52.5},{"ch":"Partner","dbc":37.0}],"arr":20280},{"journey":[{"ch":"Paid Search","dbc":125.4},{"ch":"Review Sites (G2)","dbc":112.6}],"arr":172485},{"journey":[{"ch":"Organic / SEO","dbc":103.4},{"ch":"Organic / SEO","dbc":97.4},{"ch":"Lifecycle / Email","dbc":76.7},{"ch":"Review Sites (G2)","dbc":48.4},{"ch":"Review Sites (G2)","dbc":24.2},{"ch":"Partner","dbc":0.0}],"arr":29563},{"journey":[{"ch":"Organic / SEO","dbc":7.3},{"ch":"Review Sites (G2)","dbc":1.4},{"ch":"Lifecycle / Email","dbc":0.6}],"arr":21435},{"journey":[{"ch":"Review Sites (G2)","dbc":58.5},{"ch":"Paid Search","dbc":46.2},{"ch":"Review Sites (G2)","dbc":35.5},{"ch":"Field / Events","dbc":3.4}],"arr":18350},{"journey":[{"ch":"Paid Search","dbc":46.2},{"ch":"Review Sites (G2)","dbc":44.7},{"ch":"Webinars","dbc":40.5},{"ch":"Organic / SEO","dbc":15.0},{"ch":"Webinars","dbc":3.8}],"arr":126614},{"journey":[{"ch":"Lifecycle / Email","dbc":148.7},{"ch":"Review Sites (G2)","dbc":96.6},{"ch":"Partner","dbc":66.0},{"ch":"Content Syndic.","dbc":22.6}],"arr":20728},{"journey":[{"ch":"Review Sites (G2)","dbc":132.3},{"ch":"Organic / SEO","dbc":108.4},{"ch":"Lifecycle / Email","dbc":97.3},{"ch":"Review Sites (G2)","dbc":93.7}],"arr":21525},{"journey":[{"ch":"Paid Social","dbc":14.4},{"ch":"Webinars","dbc":13.8},{"ch":"Lifecycle / Email","dbc":12.4},{"ch":"Content Syndic.","dbc":9.7},{"ch":"Webinars","dbc":8.4},{"ch":"Partner","dbc":3.8}],"arr":38700},{"journey":[{"ch":"Lifecycle / Email","dbc":124.9},{"ch":"Lifecycle / Email","dbc":118.7},{"ch":"Content Syndic.","dbc":111.2},{"ch":"Field / Events","dbc":86.1},{"ch":"Lifecycle / Email","dbc":14.5}],"arr":41450},{"journey":[{"ch":"Organic / SEO","dbc":34.6},{"ch":"Content Syndic.","dbc":32.0},{"ch":"Field / Events","dbc":30.2},{"ch":"Webinars","dbc":3.2}],"arr":22035},{"journey":[{"ch":"Lifecycle / Email","dbc":52.3},{"ch":"Content Syndic.","dbc":46.9},{"ch":"Review Sites (G2)","dbc":38.1},{"ch":"Lifecycle / Email","dbc":29.7},{"ch":"Content Syndic.","dbc":17.3},{"ch":"Field / Events","dbc":4.1}],"arr":129756},{"journey":[{"ch":"Lifecycle / Email","dbc":106.1},{"ch":"Review Sites (G2)","dbc":87.7},{"ch":"Review Sites (G2)","dbc":71.5},{"ch":"Partner","dbc":64.8}],"arr":142278},{"journey":[{"ch":"Webinars","dbc":52.8},{"ch":"Paid Search","dbc":39.6},{"ch":"Webinars","dbc":25.9},{"ch":"Content Syndic.","dbc":20.9},{"ch":"Field / Events","dbc":3.1}],"arr":29751},{"journey":[{"ch":"Paid Search","dbc":21.9},{"ch":"Review Sites (G2)","dbc":17.3},{"ch":"Review Sites (G2)","dbc":11.1},{"ch":"Webinars","dbc":8.6}],"arr":19473},{"journey":[{"ch":"Paid Social","dbc":34.8},{"ch":"Review Sites (G2)","dbc":28.4},{"ch":"Webinars","dbc":26.7},{"ch":"Field / Events","dbc":8.1},{"ch":"Partner","dbc":8.0}],"arr":22248},{"journey":[{"ch":"Paid Social","dbc":19.8},{"ch":"Review Sites (G2)","dbc":8.3},{"ch":"Field / Events","dbc":4.2},{"ch":"Partner","dbc":0.5}],"arr":39045},{"journey":[{"ch":"Partner","dbc":67.1},{"ch":"Paid Social","dbc":35.9},{"ch":"Lifecycle / Email","dbc":33.9},{"ch":"Content Syndic.","dbc":24.3},{"ch":"Field / Events","dbc":6.6}],"arr":172132},{"journey":[{"ch":"Content Syndic.","dbc":97.5},{"ch":"Review Sites (G2)","dbc":84.0},{"ch":"Field / Events","dbc":21.9},{"ch":"Webinars","dbc":16.0}],"arr":17928},{"journey":[{"ch":"Lifecycle / Email","dbc":59.8},{"ch":"Partner","dbc":46.4},{"ch":"Review Sites (G2)","dbc":13.5}],"arr":56655},{"journey":[{"ch":"Paid Search","dbc":156.0},{"ch":"Field / Events","dbc":20.7}],"arr":62973},{"journey":[{"ch":"Paid Search","dbc":18.0},{"ch":"Review Sites (G2)","dbc":15.0},{"ch":"Lifecycle / Email","dbc":7.5},{"ch":"Partner","dbc":1.8}],"arr":35263},{"journey":[{"ch":"Webinars","dbc":67.7},{"ch":"Review Sites (G2)","dbc":16.5},{"ch":"Field / Events","dbc":13.7},{"ch":"Field / Events","dbc":11.1}],"arr":59367},{"journey":[{"ch":"Paid Search","dbc":135.5},{"ch":"Paid Social","dbc":127.5},{"ch":"Content Syndic.","dbc":124.1},{"ch":"Webinars","dbc":79.6},{"ch":"Organic / SEO","dbc":60.3},{"ch":"Content Syndic.","dbc":54.1},{"ch":"Lifecycle / Email","dbc":44.2}],"arr":58908},{"journey":[{"ch":"Paid Social","dbc":110.1},{"ch":"Webinars","dbc":73.2},{"ch":"Paid Social","dbc":54.5},{"ch":"Field / Events","dbc":2.3}],"arr":53493},{"journey":[{"ch":"Organic / SEO","dbc":71.4},{"ch":"Webinars","dbc":58.9},{"ch":"Paid Search","dbc":15.1},{"ch":"Organic / SEO","dbc":6.0},{"ch":"Partner","dbc":0.2}],"arr":21665},{"journey":[{"ch":"Review Sites (G2)","dbc":48.8},{"ch":"Lifecycle / Email","dbc":36.7},{"ch":"Webinars","dbc":35.5}],"arr":20869},{"journey":[{"ch":"Webinars","dbc":78.0},{"ch":"Paid Social","dbc":70.4},{"ch":"Webinars","dbc":55.2},{"ch":"Webinars","dbc":37.0},{"ch":"Partner","dbc":28.9},{"ch":"Field / Events","dbc":8.0}],"arr":39727},{"journey":[{"ch":"Paid Social","dbc":18.3},{"ch":"Organic / SEO","dbc":17.9},{"ch":"Lifecycle / Email","dbc":15.8},{"ch":"Partner","dbc":10.4},{"ch":"Review Sites (G2)","dbc":5.0},{"ch":"Webinars","dbc":2.0}],"arr":66312},{"journey":[{"ch":"Lifecycle / Email","dbc":92.4},{"ch":"Content Syndic.","dbc":92.0},{"ch":"Webinars","dbc":74.1},{"ch":"Webinars","dbc":69.4},{"ch":"Webinars","dbc":29.1},{"ch":"Review Sites (G2)","dbc":28.9},{"ch":"Field / Events","dbc":3.3}],"arr":32101},{"journey":[{"ch":"Organic / SEO","dbc":65.1},{"ch":"Field / Events","dbc":53.6},{"ch":"Content Syndic.","dbc":35.8}],"arr":21063},{"journey":[{"ch":"Lifecycle / Email","dbc":33.2},{"ch":"Lifecycle / Email","dbc":21.6},{"ch":"Content Syndic.","dbc":15.1},{"ch":"Field / Events","dbc":10.0}],"arr":20167},{"journey":[{"ch":"Organic / SEO","dbc":93.8},{"ch":"Lifecycle / Email","dbc":43.3},{"ch":"Review Sites (G2)","dbc":43.0},{"ch":"Review Sites (G2)","dbc":3.9},{"ch":"Partner","dbc":3.2}],"arr":67471},{"journey":[{"ch":"Organic / SEO","dbc":24.4},{"ch":"Paid Social","dbc":23.1},{"ch":"Content Syndic.","dbc":19.8},{"ch":"Review Sites (G2)","dbc":1.9},{"ch":"Partner","dbc":0.3}],"arr":20843},{"journey":[{"ch":"Organic / SEO","dbc":10.5},{"ch":"Content Syndic.","dbc":10.2},{"ch":"Content Syndic.","dbc":9.6},{"ch":"Partner","dbc":7.8}],"arr":19963},{"journey":[{"ch":"Organic / SEO","dbc":59.8}],"arr":30072},{"journey":[{"ch":"Organic / SEO","dbc":59.2},{"ch":"Field / Events","dbc":50.4},{"ch":"Paid Search","dbc":43.3},{"ch":"Webinars","dbc":29.9},{"ch":"Content Syndic.","dbc":27.8},{"ch":"Field / Events","dbc":19.8}],"arr":72280},{"journey":[{"ch":"Review Sites (G2)","dbc":29.3},{"ch":"Field / Events","dbc":19.1},{"ch":"Review Sites (G2)","dbc":10.0},{"ch":"Review Sites (G2)","dbc":4.7},{"ch":"Field / Events","dbc":2.5},{"ch":"Field / Events","dbc":0.4}],"arr":15309},{"journey":[{"ch":"Organic / SEO","dbc":34.7},{"ch":"Review Sites (G2)","dbc":17.5},{"ch":"Content Syndic.","dbc":8.8}],"arr":39185},{"journey":[{"ch":"Paid Search","dbc":13.7},{"ch":"Partner","dbc":4.3}],"arr":21543},{"journey":[{"ch":"Lifecycle / Email","dbc":57.5},{"ch":"Review Sites (G2)","dbc":48.7},{"ch":"Content Syndic.","dbc":20.7},{"ch":"Paid Social","dbc":15.2}],"arr":20946},{"journey":[{"ch":"Paid Social","dbc":48.2},{"ch":"Organic / SEO","dbc":39.8},{"ch":"Paid Search","dbc":32.5},{"ch":"Organic / SEO","dbc":28.2},{"ch":"Paid Search","dbc":27.4},{"ch":"Review Sites (G2)","dbc":4.7}],"arr":39081},{"journey":[{"ch":"Paid Social","dbc":72.6},{"ch":"Content Syndic.","dbc":64.8},{"ch":"Review Sites (G2)","dbc":24.3},{"ch":"Partner","dbc":11.1}],"arr":21517},{"journey":[{"ch":"Paid Search","dbc":76.8},{"ch":"Lifecycle / Email","dbc":74.4},{"ch":"Content Syndic.","dbc":63.6},{"ch":"Lifecycle / Email","dbc":34.3}],"arr":22118},{"journey":[{"ch":"Paid Search","dbc":68.4},{"ch":"Paid Search","dbc":68.1},{"ch":"Content Syndic.","dbc":48.0},{"ch":"Organic / SEO","dbc":40.8},{"ch":"Content Syndic.","dbc":19.9},{"ch":"Paid Search","dbc":19.3}],"arr":69586},{"journey":[{"ch":"Paid Social","dbc":37.5},{"ch":"Paid Social","dbc":34.1},{"ch":"Review Sites (G2)","dbc":26.3},{"ch":"Review Sites (G2)","dbc":19.9},{"ch":"Partner","dbc":17.1}],"arr":40663},{"journey":[{"ch":"Paid Search","dbc":120.0},{"ch":"Content Syndic.","dbc":113.4},{"ch":"Webinars","dbc":74.5},{"ch":"Webinars","dbc":57.9},{"ch":"Lifecycle / Email","dbc":50.8},{"ch":"Paid Search","dbc":49.3},{"ch":"Partner","dbc":15.6}],"arr":19629},{"journey":[{"ch":"Lifecycle / Email","dbc":85.2},{"ch":"Content Syndic.","dbc":80.1},{"ch":"Partner","dbc":58.6},{"ch":"Content Syndic.","dbc":57.3},{"ch":"Organic / SEO","dbc":48.8}],"arr":39945},{"journey":[{"ch":"Organic / SEO","dbc":45.3},{"ch":"Lifecycle / Email","dbc":38.8},{"ch":"Webinars","dbc":34.1},{"ch":"Lifecycle / Email","dbc":9.8}],"arr":22196},{"journey":[{"ch":"Paid Search","dbc":136.0},{"ch":"Webinars","dbc":128.5},{"ch":"Partner","dbc":111.0}],"arr":21990},{"journey":[{"ch":"Paid Social","dbc":55.3},{"ch":"Paid Social","dbc":47.6},{"ch":"Lifecycle / Email","dbc":38.1},{"ch":"Field / Events","dbc":2.6}],"arr":16470},{"journey":[{"ch":"Review Sites (G2)","dbc":25.3},{"ch":"Review Sites (G2)","dbc":16.4},{"ch":"Field / Events","dbc":12.8}],"arr":66347},{"journey":[{"ch":"Organic / SEO","dbc":85.5},{"ch":"Partner","dbc":83.0},{"ch":"Partner","dbc":60.3},{"ch":"Partner","dbc":53.9},{"ch":"Paid Social","dbc":47.4},{"ch":"Field / Events","dbc":38.9}],"arr":15471},{"journey":[{"ch":"Review Sites (G2)","dbc":11.9}],"arr":30311},{"journey":[{"ch":"Organic / SEO","dbc":15.7},{"ch":"Paid Search","dbc":12.9},{"ch":"Paid Social","dbc":9.3},{"ch":"Content Syndic.","dbc":9.0},{"ch":"Review Sites (G2)","dbc":1.3}],"arr":52884},{"journey":[{"ch":"Paid Social","dbc":31.6},{"ch":"Partner","dbc":1.9}],"arr":17801},{"journey":[{"ch":"Paid Social","dbc":70.0},{"ch":"Content Syndic.","dbc":61.5},{"ch":"Lifecycle / Email","dbc":44.6},{"ch":"Partner","dbc":36.6}],"arr":17843},{"journey":[{"ch":"Paid Search","dbc":66.8},{"ch":"Organic / SEO","dbc":12.6},{"ch":"Partner","dbc":3.4}],"arr":18022},{"journey":[{"ch":"Organic / SEO","dbc":58.4},{"ch":"Review Sites (G2)","dbc":34.5},{"ch":"Paid Search","dbc":28.4},{"ch":"Lifecycle / Email","dbc":24.9},{"ch":"Partner","dbc":4.4}],"arr":17576},{"journey":[{"ch":"Organic / SEO","dbc":124.1},{"ch":"Field / Events","dbc":121.2},{"ch":"Lifecycle / Email","dbc":115.0},{"ch":"Lifecycle / Email","dbc":112.1},{"ch":"Partner","dbc":76.2}],"arr":39957},{"journey":[{"ch":"Review Sites (G2)","dbc":51.4},{"ch":"Paid Search","dbc":42.4}],"arr":55736},{"journey":[{"ch":"Organic / SEO","dbc":60.6}],"arr":38473},{"journey":[{"ch":"Organic / SEO","dbc":54.0},{"ch":"Lifecycle / Email","dbc":47.9},{"ch":"Lifecycle / Email","dbc":26.9},{"ch":"Content Syndic.","dbc":22.2}],"arr":68462},{"journey":[{"ch":"Paid Search","dbc":18.5},{"ch":"Organic / SEO","dbc":9.0},{"ch":"Partner","dbc":4.0}],"arr":20977},{"journey":[{"ch":"Paid Social","dbc":18.0},{"ch":"Lifecycle / Email","dbc":16.7},{"ch":"Content Syndic.","dbc":15.8},{"ch":"Partner","dbc":15.2},{"ch":"Organic / SEO","dbc":11.7},{"ch":"Field / Events","dbc":6.1}],"arr":17664},{"journey":[{"ch":"Organic / SEO","dbc":24.0},{"ch":"Content Syndic.","dbc":12.3},{"ch":"Partner","dbc":1.6}],"arr":15549},{"journey":[{"ch":"Organic / SEO","dbc":20.7},{"ch":"Content Syndic.","dbc":7.1}],"arr":15339},{"journey":[{"ch":"Paid Search","dbc":27.8},{"ch":"Lifecycle / Email","dbc":23.0},{"ch":"Lifecycle / Email","dbc":17.0},{"ch":"Review Sites (G2)","dbc":11.1}],"arr":75723},{"journey":[{"ch":"Webinars","dbc":74.2},{"ch":"Review Sites (G2)","dbc":42.9},{"ch":"Partner","dbc":27.2}],"arr":31254},{"journey":[{"ch":"Content Syndic.","dbc":16.1},{"ch":"Partner","dbc":13.9},{"ch":"Content Syndic.","dbc":12.6},{"ch":"Lifecycle / Email","dbc":10.7},{"ch":"Lifecycle / Email","dbc":7.7},{"ch":"Review Sites (G2)","dbc":4.7},{"ch":"Partner","dbc":0.7}],"arr":15894},{"journey":[{"ch":"Paid Social","dbc":49.0}],"arr":74874},{"journey":[{"ch":"Organic / SEO","dbc":60.2},{"ch":"Lifecycle / Email","dbc":58.0},{"ch":"Webinars","dbc":49.0},{"ch":"Lifecycle / Email","dbc":34.1},{"ch":"Partner","dbc":29.5},{"ch":"Field / Events","dbc":19.3}],"arr":15720},{"journey":[{"ch":"Organic / SEO","dbc":35.4},{"ch":"Review Sites (G2)","dbc":30.8},{"ch":"Lifecycle / Email","dbc":20.4},{"ch":"Field / Events","dbc":8.7}],"arr":29686},{"journey":[{"ch":"Organic / SEO","dbc":36.5},{"ch":"Field / Events","dbc":33.3},{"ch":"Partner","dbc":21.8},{"ch":"Lifecycle / Email","dbc":19.5},{"ch":"Lifecycle / Email","dbc":11.0}],"arr":32617},{"journey":[{"ch":"Review Sites (G2)","dbc":40.4},{"ch":"Field / Events","dbc":15.2},{"ch":"Content Syndic.","dbc":12.3},{"ch":"Partner","dbc":10.5}],"arr":40944},{"journey":[{"ch":"Organic / SEO","dbc":120.5},{"ch":"Lifecycle / Email","dbc":73.3}],"arr":68544},{"journey":[{"ch":"Review Sites (G2)","dbc":138.7},{"ch":"Lifecycle / Email","dbc":134.4},{"ch":"Paid Social","dbc":126.1},{"ch":"Organic / SEO","dbc":81.0},{"ch":"Content Syndic.","dbc":52.1},{"ch":"Content Syndic.","dbc":36.7},{"ch":"Partner","dbc":5.2}],"arr":35962},{"journey":[{"ch":"Webinars","dbc":93.3},{"ch":"Lifecycle / Email","dbc":79.5},{"ch":"Review Sites (G2)","dbc":71.2},{"ch":"Partner","dbc":55.3},{"ch":"Content Syndic.","dbc":41.1},{"ch":"Review Sites (G2)","dbc":31.5},{"ch":"Field / Events","dbc":18.2}],"arr":20517},{"journey":[{"ch":"Organic / SEO","dbc":51.3},{"ch":"Lifecycle / Email","dbc":24.7},{"ch":"Webinars","dbc":20.9},{"ch":"Field / Events","dbc":9.7}],"arr":22483},{"journey":[{"ch":"Organic / SEO","dbc":140.2},{"ch":"Review Sites (G2)","dbc":23.5},{"ch":"Partner","dbc":2.7}],"arr":31340},{"journey":[{"ch":"Content Syndic.","dbc":19.4},{"ch":"Lifecycle / Email","dbc":18.3},{"ch":"Lifecycle / Email","dbc":13.9},{"ch":"Paid Search","dbc":12.8},{"ch":"Review Sites (G2)","dbc":11.7},{"ch":"Review Sites (G2)","dbc":6.3},{"ch":"Lifecycle / Email","dbc":1.7}],"arr":74082},{"journey":[{"ch":"Paid Social","dbc":116.6},{"ch":"Lifecycle / Email","dbc":66.3},{"ch":"Partner","dbc":0.7}],"arr":19398},{"journey":[{"ch":"Organic / SEO","dbc":106.8},{"ch":"Lifecycle / Email","dbc":77.7},{"ch":"Paid Social","dbc":35.6},{"ch":"Organic / SEO","dbc":12.8}],"arr":16447},{"journey":[{"ch":"Lifecycle / Email","dbc":35.0},{"ch":"Review Sites (G2)","dbc":28.6},{"ch":"Content Syndic.","dbc":12.6},{"ch":"Partner","dbc":2.7}],"arr":18268},{"journey":[{"ch":"Organic / SEO","dbc":52.3},{"ch":"Review Sites (G2)","dbc":49.9},{"ch":"Partner","dbc":4.9}],"arr":32556},{"journey":[{"ch":"Review Sites (G2)","dbc":26.8},{"ch":"Webinars","dbc":23.1},{"ch":"Content Syndic.","dbc":22.8},{"ch":"Field / Events","dbc":21.2},{"ch":"Lifecycle / Email","dbc":11.5},{"ch":"Paid Search","dbc":6.3},{"ch":"Paid Social","dbc":5.5}],"arr":39596},{"journey":[{"ch":"Field / Events","dbc":21.6},{"ch":"Webinars","dbc":21.5},{"ch":"Review Sites (G2)","dbc":12.7},{"ch":"Partner","dbc":10.6},{"ch":"Review Sites (G2)","dbc":6.5},{"ch":"Webinars","dbc":4.8}],"arr":20876},{"journey":[{"ch":"Organic / SEO","dbc":82.5},{"ch":"Partner","dbc":71.2},{"ch":"Field / Events","dbc":59.7},{"ch":"Review Sites (G2)","dbc":57.0},{"ch":"Lifecycle / Email","dbc":41.5},{"ch":"Content Syndic.","dbc":20.2}],"arr":16548},{"journey":[{"ch":"Organic / SEO","dbc":36.3}],"arr":34035},{"journey":[{"ch":"Organic / SEO","dbc":34.1},{"ch":"Content Syndic.","dbc":27.3},{"ch":"Organic / SEO","dbc":26.0},{"ch":"Field / Events","dbc":23.4}],"arr":15974},{"journey":[{"ch":"Paid Search","dbc":74.3},{"ch":"Content Syndic.","dbc":14.9},{"ch":"Webinars","dbc":10.5}],"arr":36949},{"journey":[{"ch":"Organic / SEO","dbc":129.6},{"ch":"Review Sites (G2)","dbc":51.4},{"ch":"Partner","dbc":20.9}],"arr":64199},{"journey":[{"ch":"Content Syndic.","dbc":29.0},{"ch":"Field / Events","dbc":27.5},{"ch":"Review Sites (G2)","dbc":17.4},{"ch":"Webinars","dbc":15.9},{"ch":"Content Syndic.","dbc":8.0},{"ch":"Field / Events","dbc":6.3}],"arr":15835},{"journey":[{"ch":"Paid Social","dbc":86.8},{"ch":"Review Sites (G2)","dbc":71.5},{"ch":"Field / Events","dbc":58.4},{"ch":"Lifecycle / Email","dbc":33.7},{"ch":"Field / Events","dbc":30.9}],"arr":19865},{"journey":[{"ch":"Paid Search","dbc":71.8},{"ch":"Field / Events","dbc":31.1}],"arr":15543},{"journey":[{"ch":"Organic / SEO","dbc":17.7},{"ch":"Paid Social","dbc":8.3},{"ch":"Partner","dbc":5.5}],"arr":16382},{"journey":[{"ch":"Review Sites (G2)","dbc":76.1},{"ch":"Lifecycle / Email","dbc":72.0},{"ch":"Webinars","dbc":54.5},{"ch":"Partner","dbc":25.2},{"ch":"Content Syndic.","dbc":3.6}],"arr":38852},{"journey":[{"ch":"Paid Social","dbc":89.1},{"ch":"Webinars","dbc":78.4},{"ch":"Content Syndic.","dbc":75.5},{"ch":"Paid Search","dbc":61.9},{"ch":"Lifecycle / Email","dbc":38.2},{"ch":"Partner","dbc":25.2}],"arr":69065},{"journey":[{"ch":"Paid Search","dbc":131.2},{"ch":"Field / Events","dbc":64.9}],"arr":16857},{"journey":[{"ch":"Webinars","dbc":76.9},{"ch":"Content Syndic.","dbc":67.3},{"ch":"Content Syndic.","dbc":59.1},{"ch":"Review Sites (G2)","dbc":58.6},{"ch":"Review Sites (G2)","dbc":50.5},{"ch":"Partner","dbc":15.4}],"arr":32810},{"journey":[{"ch":"Paid Search","dbc":0.9}],"arr":71769},{"journey":[{"ch":"Paid Social","dbc":75.7},{"ch":"Content Syndic.","dbc":38.9},{"ch":"Field / Events","dbc":32.9}],"arr":18869},{"journey":[{"ch":"Lifecycle / Email","dbc":122.3},{"ch":"Partner","dbc":53.7},{"ch":"Content Syndic.","dbc":16.8}],"arr":76661},{"journey":[{"ch":"Paid Social","dbc":113.0},{"ch":"Content Syndic.","dbc":93.1},{"ch":"Content Syndic.","dbc":2.4}],"arr":21805},{"journey":[{"ch":"Paid Search","dbc":23.4},{"ch":"Paid Social","dbc":12.7},{"ch":"Paid Social","dbc":7.2},{"ch":"Field / Events","dbc":6.8}],"arr":29315},{"journey":[{"ch":"Review Sites (G2)","dbc":93.4},{"ch":"Organic / SEO","dbc":63.5},{"ch":"Lifecycle / Email","dbc":54.4},{"ch":"Partner","dbc":37.4},{"ch":"Partner","dbc":33.7},{"ch":"Partner","dbc":17.4}],"arr":16170},{"journey":[{"ch":"Partner","dbc":44.4},{"ch":"Content Syndic.","dbc":26.2},{"ch":"Paid Search","dbc":3.3}],"arr":31602},{"journey":[{"ch":"Review Sites (G2)","dbc":40.1},{"ch":"Organic / SEO","dbc":17.8}],"arr":34386},{"journey":[{"ch":"Review Sites (G2)","dbc":38.8},{"ch":"Review Sites (G2)","dbc":28.5},{"ch":"Field / Events","dbc":25.3}],"arr":40125},{"journey":[{"ch":"Paid Search","dbc":30.2},{"ch":"Review Sites (G2)","dbc":28.4},{"ch":"Lifecycle / Email","dbc":26.0},{"ch":"Organic / SEO","dbc":18.5},{"ch":"Paid Search","dbc":18.5},{"ch":"Lifecycle / Email","dbc":3.3},{"ch":"Webinars","dbc":0.9}],"arr":18456},{"journey":[{"ch":"Paid Social","dbc":31.4}],"arr":39080},{"journey":[{"ch":"Organic / SEO","dbc":137.3},{"ch":"Review Sites (G2)","dbc":129.7},{"ch":"Content Syndic.","dbc":83.5},{"ch":"Partner","dbc":27.8}],"arr":20091},{"journey":[{"ch":"Paid Search","dbc":124.3},{"ch":"Content Syndic.","dbc":47.5},{"ch":"Content Syndic.","dbc":40.4}],"arr":16825},{"journey":[{"ch":"Organic / SEO","dbc":69.1},{"ch":"Webinars","dbc":47.0},{"ch":"Content Syndic.","dbc":43.5},{"ch":"Content Syndic.","dbc":34.1},{"ch":"Lifecycle / Email","dbc":4.0}],"arr":21001},{"journey":[{"ch":"Paid Search","dbc":104.8},{"ch":"Content Syndic.","dbc":99.5},{"ch":"Review Sites (G2)","dbc":30.7},{"ch":"Lifecycle / Email","dbc":29.3},{"ch":"Review Sites (G2)","dbc":21.8},{"ch":"Review Sites (G2)","dbc":6.8}],"arr":41208},{"journey":[{"ch":"Paid Search","dbc":93.7},{"ch":"Webinars","dbc":64.3},{"ch":"Field / Events","dbc":62.9},{"ch":"Review Sites (G2)","dbc":35.9},{"ch":"Partner","dbc":34.5},{"ch":"Review Sites (G2)","dbc":14.7},{"ch":"Webinars","dbc":5.2}],"arr":119590},{"journey":[{"ch":"Organic / SEO","dbc":97.6},{"ch":"Partner","dbc":91.6},{"ch":"Field / Events","dbc":34.2},{"ch":"Review Sites (G2)","dbc":22.5}],"arr":53989},{"journey":[{"ch":"Paid Search","dbc":93.7},{"ch":"Webinars","dbc":30.1},{"ch":"Paid Search","dbc":24.3},{"ch":"Field / Events","dbc":4.2}],"arr":39675},{"journey":[{"ch":"Paid Search","dbc":144.8},{"ch":"Webinars","dbc":16.4},{"ch":"Partner","dbc":9.3}],"arr":36010},{"journey":[{"ch":"Webinars","dbc":64.9},{"ch":"Field / Events","dbc":49.9}],"arr":69646},{"journey":[{"ch":"Paid Search","dbc":35.6},{"ch":"Lifecycle / Email","dbc":31.9},{"ch":"Paid Search","dbc":24.7},{"ch":"Lifecycle / Email","dbc":9.6},{"ch":"Paid Social","dbc":8.0}],"arr":20519},{"journey":[{"ch":"Organic / SEO","dbc":48.8},{"ch":"Lifecycle / Email","dbc":48.3},{"ch":"Paid Social","dbc":17.8},{"ch":"Content Syndic.","dbc":11.9},{"ch":"Field / Events","dbc":8.0}],"arr":33077},{"journey":[{"ch":"Organic / SEO","dbc":101.7},{"ch":"Content Syndic.","dbc":100.0},{"ch":"Field / Events","dbc":89.8},{"ch":"Review Sites (G2)","dbc":74.3},{"ch":"Organic / SEO","dbc":46.6},{"ch":"Content Syndic.","dbc":25.1},{"ch":"Paid Social","dbc":12.9}],"arr":20876},{"journey":[{"ch":"Organic / SEO","dbc":21.1},{"ch":"Field / Events","dbc":7.8},{"ch":"Organic / SEO","dbc":7.8},{"ch":"Content Syndic.","dbc":3.7}],"arr":30992},{"journey":[{"ch":"Lifecycle / Email","dbc":146.4},{"ch":"Partner","dbc":79.6},{"ch":"Partner","dbc":53.7}],"arr":38906},{"journey":[{"ch":"Review Sites (G2)","dbc":15.5},{"ch":"Review Sites (G2)","dbc":10.7},{"ch":"Review Sites (G2)","dbc":6.0},{"ch":"Lifecycle / Email","dbc":3.8},{"ch":"Content Syndic.","dbc":1.1},{"ch":"Partner","dbc":0.7}],"arr":16682},{"journey":[{"ch":"Paid Search","dbc":68.5},{"ch":"Paid Social","dbc":30.4},{"ch":"Partner","dbc":1.8}],"arr":18694},{"journey":[{"ch":"Paid Search","dbc":97.3},{"ch":"Organic / SEO","dbc":66.1},{"ch":"Webinars","dbc":24.1},{"ch":"Paid Social","dbc":14.5}],"arr":16148},{"journey":[{"ch":"Paid Search","dbc":70.0},{"ch":"Webinars","dbc":36.8}],"arr":30746},{"journey":[{"ch":"Organic / SEO","dbc":61.8},{"ch":"Field / Events","dbc":41.5}],"arr":64071},{"journey":[{"ch":"Content Syndic.","dbc":100.2},{"ch":"Content Syndic.","dbc":78.6},{"ch":"Content Syndic.","dbc":76.7},{"ch":"Review Sites (G2)","dbc":57.3},{"ch":"Content Syndic.","dbc":18.2},{"ch":"Review Sites (G2)","dbc":4.5}],"arr":165732},{"journey":[{"ch":"Paid Search","dbc":118.5},{"ch":"Partner","dbc":98.5},{"ch":"Lifecycle / Email","dbc":84.8},{"ch":"Organic / SEO","dbc":10.1}],"arr":68566},{"journey":[{"ch":"Paid Social","dbc":53.2},{"ch":"Content Syndic.","dbc":51.7},{"ch":"Lifecycle / Email","dbc":44.7},{"ch":"Partner","dbc":44.3},{"ch":"Lifecycle / Email","dbc":31.8},{"ch":"Lifecycle / Email","dbc":6.4},{"ch":"Field / Events","dbc":0.9}],"arr":19385},{"journey":[{"ch":"Content Syndic.","dbc":19.9},{"ch":"Content Syndic.","dbc":17.7},{"ch":"Paid Social","dbc":14.3},{"ch":"Field / Events","dbc":7.6},{"ch":"Content Syndic.","dbc":3.8},{"ch":"Field / Events","dbc":3.7}],"arr":21407},{"journey":[{"ch":"Paid Search","dbc":71.4},{"ch":"Review Sites (G2)","dbc":53.8},{"ch":"Paid Search","dbc":48.2},{"ch":"Review Sites (G2)","dbc":33.7},{"ch":"Partner","dbc":24.3},{"ch":"Paid Social","dbc":16.1},{"ch":"Field / Events","dbc":4.1}],"arr":16464},{"journey":[{"ch":"Paid Search","dbc":34.0},{"ch":"Field / Events","dbc":21.2}],"arr":18853},{"journey":[{"ch":"Lifecycle / Email","dbc":92.0},{"ch":"Content Syndic.","dbc":58.8},{"ch":"Partner","dbc":50.8},{"ch":"Partner","dbc":34.0}],"arr":18550},{"journey":[{"ch":"Organic / SEO","dbc":63.7},{"ch":"Paid Social","dbc":51.6},{"ch":"Webinars","dbc":45.5},{"ch":"Review Sites (G2)","dbc":27.4}],"arr":31616},{"journey":[{"ch":"Review Sites (G2)","dbc":7.2},{"ch":"Partner","dbc":5.1}],"arr":41071},{"journey":[{"ch":"Organic / SEO","dbc":51.3},{"ch":"Webinars","dbc":27.6},{"ch":"Paid Social","dbc":8.1},{"ch":"Partner","dbc":0.6}],"arr":70092},{"journey":[{"ch":"Review Sites (G2)","dbc":96.6},{"ch":"Field / Events","dbc":47.1},{"ch":"Paid Social","dbc":32.2},{"ch":"Review Sites (G2)","dbc":12.9}],"arr":19539},{"journey":[{"ch":"Paid Search","dbc":29.0},{"ch":"Lifecycle / Email","dbc":25.6},{"ch":"Review Sites (G2)","dbc":10.9},{"ch":"Content Syndic.","dbc":8.9},{"ch":"Lifecycle / Email","dbc":2.3},{"ch":"Review Sites (G2)","dbc":1.9},{"ch":"Partner","dbc":0.9}],"arr":34341},{"journey":[{"ch":"Paid Social","dbc":18.9}],"arr":17284},{"journey":[{"ch":"Content Syndic.","dbc":15.3},{"ch":"Paid Search","dbc":10.8},{"ch":"Partner","dbc":1.4}],"arr":35885},{"journey":[{"ch":"Paid Search","dbc":82.4},{"ch":"Content Syndic.","dbc":68.2},{"ch":"Paid Social","dbc":39.0},{"ch":"Organic / SEO","dbc":15.6}],"arr":18985},{"journey":[{"ch":"Organic / SEO","dbc":22.0},{"ch":"Organic / SEO","dbc":13.7},{"ch":"Organic / SEO","dbc":6.0},{"ch":"Review Sites (G2)","dbc":5.2},{"ch":"Content Syndic.","dbc":1.5}],"arr":55754},{"journey":[{"ch":"Organic / SEO","dbc":71.2},{"ch":"Content Syndic.","dbc":52.1},{"ch":"Organic / SEO","dbc":31.0},{"ch":"Field / Events","dbc":25.2},{"ch":"Paid Search","dbc":1.9}],"arr":21443},{"journey":[{"ch":"Paid Social","dbc":16.5},{"ch":"Review Sites (G2)","dbc":14.0},{"ch":"Paid Social","dbc":13.4},{"ch":"Review Sites (G2)","dbc":9.8},{"ch":"Review Sites (G2)","dbc":6.9},{"ch":"Organic / SEO","dbc":6.5},{"ch":"Lifecycle / Email","dbc":3.5}],"arr":17132},{"journey":[{"ch":"Organic / SEO","dbc":19.4},{"ch":"Webinars","dbc":19.0},{"ch":"Review Sites (G2)","dbc":10.8}],"arr":70477},{"journey":[{"ch":"Field / Events","dbc":66.3},{"ch":"Lifecycle / Email","dbc":54.7},{"ch":"Review Sites (G2)","dbc":53.2},{"ch":"Partner","dbc":15.1}],"arr":137545},{"journey":[{"ch":"Webinars","dbc":63.2},{"ch":"Lifecycle / Email","dbc":61.6},{"ch":"Content Syndic.","dbc":36.3},{"ch":"Paid Social","dbc":18.2},{"ch":"Field / Events","dbc":6.1}],"arr":17625},{"journey":[{"ch":"Lifecycle / Email","dbc":50.7},{"ch":"Webinars","dbc":46.3},{"ch":"Review Sites (G2)","dbc":27.4},{"ch":"Field / Events","dbc":22.2},{"ch":"Partner","dbc":16.0}],"arr":35454},{"journey":[{"ch":"Partner","dbc":37.7},{"ch":"Field / Events","dbc":11.6}],"arr":22144},{"journey":[{"ch":"Lifecycle / Email","dbc":30.6},{"ch":"Paid Search","dbc":30.4},{"ch":"Webinars","dbc":22.9},{"ch":"Webinars","dbc":3.3},{"ch":"Field / Events","dbc":0.4}],"arr":19022},{"journey":[{"ch":"Organic / SEO","dbc":43.0},{"ch":"Webinars","dbc":27.6},{"ch":"Lifecycle / Email","dbc":13.9}],"arr":37749},{"journey":[{"ch":"Lifecycle / Email","dbc":79.3},{"ch":"Field / Events","dbc":46.0}],"arr":20579},{"journey":[{"ch":"Organic / SEO","dbc":105.8},{"ch":"Paid Social","dbc":100.2},{"ch":"Webinars","dbc":63.3},{"ch":"Content Syndic.","dbc":25.9},{"ch":"Webinars","dbc":19.8},{"ch":"Field / Events","dbc":6.3}],"arr":16377},{"journey":[{"ch":"Lifecycle / Email","dbc":37.7},{"ch":"Webinars","dbc":13.3},{"ch":"Partner","dbc":3.0}],"arr":41199},{"journey":[{"ch":"Organic / SEO","dbc":26.2},{"ch":"Paid Search","dbc":16.6},{"ch":"Field / Events","dbc":12.1}],"arr":29870},{"journey":[{"ch":"Organic / SEO","dbc":134.4},{"ch":"Field / Events","dbc":50.0},{"ch":"Lifecycle / Email","dbc":47.1}],"arr":21593},{"journey":[{"ch":"Organic / SEO","dbc":41.2},{"ch":"Lifecycle / Email","dbc":29.2},{"ch":"Organic / SEO","dbc":25.5},{"ch":"Organic / SEO","dbc":24.8},{"ch":"Review Sites (G2)","dbc":19.8},{"ch":"Partner","dbc":8.0}],"arr":16899},{"journey":[{"ch":"Lifecycle / Email","dbc":70.7},{"ch":"Lifecycle / Email","dbc":55.1},{"ch":"Content Syndic.","dbc":53.6},{"ch":"Paid Search","dbc":51.8},{"ch":"Content Syndic.","dbc":7.7}],"arr":32353},{"journey":[{"ch":"Lifecycle / Email","dbc":21.0},{"ch":"Review Sites (G2)","dbc":12.1}],"arr":65671},{"journey":[{"ch":"Paid Social","dbc":74.6},{"ch":"Field / Events","dbc":30.8}],"arr":68481},{"journey":[{"ch":"Webinars","dbc":91.2},{"ch":"Partner","dbc":49.1},{"ch":"Lifecycle / Email","dbc":40.5},{"ch":"Partner","dbc":4.7}],"arr":35994},{"journey":[{"ch":"Content Syndic.","dbc":128.5},{"ch":"Paid Social","dbc":123.8},{"ch":"Partner","dbc":97.4},{"ch":"Organic / SEO","dbc":45.4},{"ch":"Field / Events","dbc":36.3}],"arr":20700},{"journey":[{"ch":"Paid Search","dbc":80.0},{"ch":"Lifecycle / Email","dbc":62.8},{"ch":"Webinars","dbc":55.9},{"ch":"Paid Social","dbc":40.5}],"arr":18458},{"journey":[{"ch":"Lifecycle / Email","dbc":36.6},{"ch":"Review Sites (G2)","dbc":35.2},{"ch":"Webinars","dbc":31.2},{"ch":"Partner","dbc":15.8},{"ch":"Partner","dbc":0.3}],"arr":69024},{"journey":[{"ch":"Organic / SEO","dbc":113.9},{"ch":"Review Sites (G2)","dbc":88.4},{"ch":"Lifecycle / Email","dbc":48.0},{"ch":"Content Syndic.","dbc":44.0},{"ch":"Content Syndic.","dbc":32.0},{"ch":"Paid Search","dbc":31.7}],"arr":17521},{"journey":[{"ch":"Paid Search","dbc":17.3},{"ch":"Content Syndic.","dbc":12.9},{"ch":"Webinars","dbc":7.5}],"arr":70807},{"journey":[{"ch":"Paid Social","dbc":137.7},{"ch":"Paid Social","dbc":102.9},{"ch":"Partner","dbc":45.0}],"arr":42210},{"journey":[{"ch":"Content Syndic.","dbc":33.0},{"ch":"Content Syndic.","dbc":20.7},{"ch":"Content Syndic.","dbc":20.2},{"ch":"Partner","dbc":14.6}],"arr":20735},{"journey":[{"ch":"Organic / SEO","dbc":61.7},{"ch":"Paid Search","dbc":57.6},{"ch":"Paid Social","dbc":52.9},{"ch":"Partner","dbc":19.2},{"ch":"Partner","dbc":9.8}],"arr":32685},{"journey":[{"ch":"Paid Search","dbc":74.6},{"ch":"Lifecycle / Email","dbc":42.4},{"ch":"Partner","dbc":1.3}],"arr":16511},{"journey":[{"ch":"Content Syndic.","dbc":91.5},{"ch":"Lifecycle / Email","dbc":83.6},{"ch":"Partner","dbc":16.7}],"arr":18477},{"journey":[{"ch":"Lifecycle / Email","dbc":56.5},{"ch":"Field / Events","dbc":22.8},{"ch":"Lifecycle / Email","dbc":19.7},{"ch":"Paid Social","dbc":18.4},{"ch":"Organic / SEO","dbc":2.5}],"arr":17620},{"journey":[{"ch":"Paid Social","dbc":96.2},{"ch":"Content Syndic.","dbc":89.9},{"ch":"Webinars","dbc":82.2},{"ch":"Webinars","dbc":76.5},{"ch":"Lifecycle / Email","dbc":66.7}],"arr":20157},{"journey":[{"ch":"Organic / SEO","dbc":121.0},{"ch":"Lifecycle / Email","dbc":105.8},{"ch":"Partner","dbc":84.5},{"ch":"Partner","dbc":5.3}],"arr":22456},{"journey":[{"ch":"Paid Search","dbc":0.4}],"arr":30432},{"journey":[{"ch":"Paid Search","dbc":49.1},{"ch":"Webinars","dbc":33.7},{"ch":"Partner","dbc":29.8},{"ch":"Content Syndic.","dbc":25.8},{"ch":"Paid Social","dbc":22.8}],"arr":132193},{"journey":[{"ch":"Organic / SEO","dbc":93.7},{"ch":"Lifecycle / Email","dbc":76.7},{"ch":"Webinars","dbc":58.8}],"arr":17874},{"journey":[{"ch":"Paid Social","dbc":43.6},{"ch":"Review Sites (G2)","dbc":16.1},{"ch":"Paid Social","dbc":8.7},{"ch":"Lifecycle / Email","dbc":1.0}],"arr":35167},{"journey":[{"ch":"Content Syndic.","dbc":55.2},{"ch":"Content Syndic.","dbc":40.0},{"ch":"Lifecycle / Email","dbc":10.9},{"ch":"Lifecycle / Email","dbc":10.6},{"ch":"Review Sites (G2)","dbc":0.5}],"arr":21003},{"journey":[{"ch":"Review Sites (G2)","dbc":75.4},{"ch":"Field / Events","dbc":58.4},{"ch":"Field / Events","dbc":51.9}],"arr":20173},{"journey":[{"ch":"Paid Search","dbc":40.3},{"ch":"Content Syndic.","dbc":28.4},{"ch":"Lifecycle / Email","dbc":22.6},{"ch":"Lifecycle / Email","dbc":22.1},{"ch":"Webinars","dbc":13.7},{"ch":"Paid Social","dbc":5.3}],"arr":18048},{"journey":[{"ch":"Paid Social","dbc":123.8},{"ch":"Content Syndic.","dbc":102.1},{"ch":"Paid Search","dbc":67.5},{"ch":"Paid Social","dbc":56.7},{"ch":"Webinars","dbc":48.7},{"ch":"Content Syndic.","dbc":9.6}],"arr":75829},{"journey":[{"ch":"Paid Social","dbc":97.7},{"ch":"Paid Social","dbc":88.8},{"ch":"Webinars","dbc":58.5},{"ch":"Lifecycle / Email","dbc":42.8}],"arr":33011},{"journey":[{"ch":"Paid Search","dbc":46.3},{"ch":"Organic / SEO","dbc":26.4},{"ch":"Field / Events","dbc":20.9},{"ch":"Lifecycle / Email","dbc":17.6}],"arr":38016},{"journey":[{"ch":"Paid Social","dbc":56.1},{"ch":"Field / Events","dbc":6.5},{"ch":"Webinars","dbc":0.9}],"arr":21848},{"journey":[{"ch":"Review Sites (G2)","dbc":115.1},{"ch":"Webinars","dbc":76.5},{"ch":"Content Syndic.","dbc":41.1},{"ch":"Field / Events","dbc":33.8}],"arr":68419},{"journey":[{"ch":"Content Syndic.","dbc":102.4},{"ch":"Lifecycle / Email","dbc":93.9},{"ch":"Review Sites (G2)","dbc":19.8},{"ch":"Content Syndic.","dbc":17.4},{"ch":"Field / Events","dbc":16.2}],"arr":34451},{"journey":[{"ch":"Lifecycle / Email","dbc":22.4},{"ch":"Partner","dbc":10.7},{"ch":"Review Sites (G2)","dbc":8.9},{"ch":"Partner","dbc":7.0}],"arr":19484}]};
+
+/* ============================================================= HELPERS */
+const $ = s => document.querySelector(s);
+const CH = Object.keys(DATA.channels);
+const color = c => DATA.channels[c].color;
+const usd = n => '$' + Math.round(n).toLocaleString('en-US');
+const usdK = n => n>=1e6 ? '$'+(n/1e6).toFixed(1)+'M' : n>=1e3 ? '$'+(n/1e3).toFixed(0)+'k' : '$'+Math.round(n);
+const num = n => Math.round(n).toLocaleString('en-US');
+const pct = n => (n*100).toFixed(0)+'%';
+
+let MODEL='linear', HALFLIFE=14, MARGIN=0.80, LIFE=3.5;
+
+Chart.defaults.color='#9fb1c4';
+Chart.defaults.font.family="'JetBrains Mono', monospace";
+Chart.defaults.font.size=10.5;
+
+/* ============================================================= ATTRIBUTION ENGINE */
+function creditForJourney(journey, model, halflife){
+  const n = journey.length;
+  const w = new Array(n).fill(0);
+  if(n===1){ w[0]=1; return w; }
+  if(model==='first'){ w[0]=1; }
+  else if(model==='last'){ w[n-1]=1; }
+  else if(model==='linear'){ for(let i=0;i<n;i++) w[i]=1/n; }
+  else if(model==='decay'){
+    let s=0; for(let i=0;i<n;i++){ const k=Math.pow(2, -journey[i].dbc/halflife); w[i]=k; s+=k; }
+    for(let i=0;i<n;i++) w[i]/=s;
+  }
+  else if(model==='position'){
+    if(n===2){ w[0]=.5; w[1]=.5; }
+    else { w[0]=.4; w[n-1]=.4; const mid=(n-2); for(let i=1;i<n-1;i++) w[i]=.2/mid; }
+  }
+  return w;
+}
+function attribute(model, halflife){
+  const cust={}, arr={};
+  CH.forEach(c=>{cust[c]=0;arr[c]=0;});
+  for(const o of DATA.opportunities){            // opportunities here are won deals only
+    const w = creditForJourney(o.journey, model, halflife);
+    o.journey.forEach((t,i)=>{ cust[t.ch]+=w[i]; arr[t.ch]+=w[i]*o.arr; });
+  }
+  return {cust, arr};
+}
+
+/* ============================================================= AGGREGATES */
+const SPEND={}, SRC_PIPE={}, MQL={};
+CH.forEach(c=>{SPEND[c]=0;SRC_PIPE[c]=0;MQL[c]=0;});
+let TOT_MQL=0, TOT_SQL=0, TOT_OPPC=0;
+const byMonth={};
+for(const r of DATA.monthly){
+  SPEND[r.channel]+=r.spend; SRC_PIPE[r.channel]+=r.pipeline; MQL[r.channel]+=r.mqls;
+  TOT_MQL+=r.mqls; TOT_SQL+=r.sqls; TOT_OPPC+=r.opps;
+  if(!byMonth[r.month]) byMonth[r.month]={spend:0,pipe:0};
+  byMonth[r.month].spend+=r.spend; byMonth[r.month].pipe+=r.pipeline;
+}
+const TOTAL_SPEND = Object.values(SPEND).reduce((a,b)=>a+b,0);
+const WON = DATA.opportunities.length;
+const TOTAL_ARR = DATA.opportunities.reduce((a,o)=>a+o.arr,0);
+const AVG_ACV = TOTAL_ARR/WON;
+const TOTAL_SRC_PIPE = Object.values(SRC_PIPE).reduce((a,b)=>a+b,0);
+const WINRATE = DATA.meta.won_rate;
+
+/* ============================================================= SATURATION MODEL */
+// monthly response curve P(s) = scale * s/(s+k), fit so curve passes through
+// (avg_month_spend, avg_month_pipeline). marginal = scale*k/(s+k)^2 (per $1).
+const SAT={};
+CH.forEach(c=>{
+  const p=DATA.saturation[c];
+  const k=p.k, avgS=p.avg_month_spend, avgP=p.total_pipeline/DATA.meta.n_months;
+  const scale = avgP*(avgS+k)/avgS;
+  SAT[c]={k,scale,avgS,avgP,
+    P:s=>scale*s/(s+k),
+    marg:s=>scale*k/Math.pow(s+k,2)};   // pipeline $ per $1 spend
+});
+function satStatus(c){
+  const r=SAT[c].avgS/SAT[c].k;
+  if(r>1.15) return ['Saturated','st-sat'];
+  if(r<0.5)  return ['Under-invested','st-under'];
+  return ['Efficient','st-eff'];
+}
+
+/* ============================================================= RENDER: OVERVIEW */
+function renderKPIs(){
+  const blendedCAC = TOTAL_SPEND/WON;
+  const ltv = AVG_ACV*MARGIN*LIFE;
+  const payback = blendedCAC/(AVG_ACV*MARGIN/12);
+  const cards=[
+    {lbl:'Marketing-sourced ARR', val:usdK(TOTAL_ARR), meta:`${num(WON)} new customers · ${usd(AVG_ACV)} ACV`, tone:'tone-acc'},
+    {lbl:'Total spend', val:usdK(TOTAL_SPEND), meta:`across ${CH.length} channels · ${DATA.meta.n_months} months`},
+    {lbl:'Blended CAC', val:usd(blendedCAC), meta:`fully-loaded acquisition cost`},
+    {lbl:'LTV : CAC', val:(ltv/blendedCAC).toFixed(1)+':1', meta:`target ≥ 3:1`, tone:(ltv/blendedCAC>=3?'tone-good':'tone-warn')},
+    {lbl:'CAC payback', val:payback.toFixed(1)+' mo', meta:`gross-margin adjusted`, tone:(payback<=18?'tone-good':'tone-warn')},
+    {lbl:'Sourced pipeline', val:usdK(TOTAL_SRC_PIPE), meta:`${pct(TOTAL_ARR/TOTAL_SRC_PIPE)} converts to ARR`},
+    {lbl:'Win rate', val:pct(WINRATE), meta:`opportunity → closed-won`},
+    {lbl:'Blended CPL', val:usd(TOTAL_SPEND/TOT_MQL), meta:`${num(TOT_MQL)} MQLs generated`},
+  ];
+  $('#kpiCards').innerHTML = cards.map(c=>`
+    <div class="card">
+      <div class="lbl">${c.lbl}</div>
+      <div class="val ${c.tone||''}">${c.val}</div>
+      <div class="meta">${c.meta}</div>
+    </div>`).join('');
+}
+function renderTrend(){
+  const months=Object.keys(byMonth).sort();
+  new Chart($('#trendChart'),{
+    data:{labels:months.map(m=>m.slice(2)),
+      datasets:[
+        {type:'bar',label:'Spend',data:months.map(m=>byMonth[m].spend),
+         backgroundColor:'rgba(79,140,255,.35)',borderColor:'#4f8cff',borderWidth:1,yAxisID:'y',borderRadius:3,maxBarThickness:18},
+        {type:'line',label:'Sourced pipeline',data:months.map(m=>byMonth[m].pipe),
+         borderColor:'#34e0c4',backgroundColor:'rgba(52,224,196,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2,yAxisID:'y1'}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10,boxHeight:10,usePointStyle:true}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${usdK(c.parsed.y)}`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:9}},
+        y:{position:'left',grid:{color:'#1a2533'},ticks:{callback:v=>usdK(v)}},
+        y1:{position:'right',grid:{display:false},ticks:{callback:v=>usdK(v)}}
+      }}
+  });
+}
+function renderFunnel(){
+  const stages=[['MQL',TOT_MQL],['SQL',TOT_SQL],['Opportunity',TOT_OPPC],['Closed-won',WON]];
+  const max=stages[0][1];
+  $('#funnel').innerHTML=stages.map((s,i)=>{
+    const w=(s[1]/max*100).toFixed(1);
+    const conv = i>0 ? ' · '+(s[1]/stages[i-1][1]*100).toFixed(0)+'%' : '';
+    return `<div class="row">
+      <div class="name">${s[0]}</div>
+      <div class="track"><div class="fill" style="width:${w}%"><span class="conv">${conv}</span></div></div>
+      <div class="num">${num(s[1])}</div></div>`;
+  }).join('');
+}
+function renderNarrative(){
+  const cac=TOTAL_SPEND/WON, ltv=AVG_ACV*MARGIN*LIFE, ratio=(ltv/cac);
+  // find best & worst marginal channel
+  const marg=CH.map(c=>[c,SAT[c].marg(SAT[c].avgS)]).sort((a,b)=>b[1]-a[1]);
+  $('#boardNarrative').innerHTML=
+    `<b>Read for the board:</b> marketing sourced <b>${usdK(TOTAL_ARR)}</b> of new ARR from <b>${usdK(TOTAL_SPEND)}</b> of spend over ${DATA.meta.n_months} months —
+     a blended CAC of <b>${usd(cac)}</b>, an <b>${ratio.toFixed(1)}:1</b> LTV:CAC and a <b>${(cac/(AVG_ACV*MARGIN/12)).toFixed(0)}-month</b> payback.
+     The efficiency story is uneven: <b>${marg[0][0]}</b> has the strongest marginal return and is starved, while <b>${marg[marg.length-1][0]}</b> shows clear saturation.
+     Section 05 quantifies the reallocation.`;
+}
+
+/* ============================================================= RENDER: ATTRIBUTION */
+let attrChart;
+const MODELS=[['first','First-touch'],['last','Last-touch'],['linear','Linear'],['decay','Time-decay'],['position','Position 40/20/40']];
+const MODEL_COPY={
+  first:`<b>First-touch</b> gives 100% of credit to the channel that started the journey. Best for answering <b>“what creates awareness / fills top of funnel.”</b> It systematically <b>over-credits discovery</b> channels (paid search, social) and ignores everything that closed the deal. Useful for demand-gen planning, misleading for ROI.`,
+  last:`<b>Last-touch</b> gives 100% to the final touch before close. It’s the CRM default and the easiest to defend operationally, but it <b>over-credits closing channels</b> (sales-assisted, partner, events) and erases the work that built the pipeline. Good for sales handoff analysis, poor for top-of-funnel budgeting.`,
+  linear:`<b>Linear</b> splits credit equally across every touch. The neutral baseline — no positional bias — but it <b>assumes every touch mattered equally</b>, which is rarely true. A sensible default when you have no strong prior and want a stable reference.`,
+  decay:`<b>Time-decay</b> weights touches by recency using an exponential half-life. It encodes the belief that <b>recent interactions matter more</b> — reasonable for short, sales-led cycles. The half-life is an <b>assumption you must state</b>: a 7-day half-life tells a very different story than 45 days. Adjust it and watch the ranking move.`,
+  position:`<b>Position-based (40/20/40)</b> rewards the <b>first and last</b> touch (40% each) and splits the rest across the middle. A pragmatic compromise that values both <b>creating</b> and <b>closing</b> while still recognising nurture. The 40/20/40 split is itself an assumption — defensible, not derived.`
+};
+function renderAttr(){
+  $('#econModelLbl').textContent = MODELS.find(m=>m[0]===MODEL)[1];
+  $('#modelExplain').innerHTML = MODEL_COPY[MODEL];
+  $('#halflifeBox').style.display = MODEL==='decay' ? 'flex' : 'none';
+  document.querySelectorAll('#modelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===MODEL));
+
+  const all={}; MODELS.forEach(m=>all[m[0]]=attribute(m[0],HALFLIFE).arr);
+  const labels=CH;
+  const datasets=MODELS.map(m=>{
+    const sel=m[0]===MODEL;
+    return {label:m[1],data:labels.map(c=>all[m[0]][c]),
+      backgroundColor:sel?'#34e0c4':'rgba(255,255,255,.07)',
+      borderColor:sel?'#34e0c4':'rgba(255,255,255,.18)',borderWidth:1,
+      borderRadius:3, barPercentage:.92, categoryPercentage:.82};
+  });
+  if(attrChart) attrChart.destroy();
+  attrChart=new Chart($('#attrChart'),{type:'bar',
+    data:{labels,datasets},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:9,boxHeight:9,usePointStyle:true,filter:i=>true}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${usdK(c.parsed.x)}`}}},
+      scales:{x:{grid:{color:'#1a2533'},ticks:{callback:v=>usdK(v)}},
+        y:{grid:{display:false},ticks:{font:{size:11}}}}}
+  });
+
+  // rank shift vs linear
+  const base=attribute('linear',HALFLIFE).arr;
+  const cur=all[MODEL];
+  const rows=CH.map(c=>({c,d:(cur[c]-base[c])})).sort((a,b)=>b.d-a.d);
+  $('#rankShift').innerHTML = rows.map(r=>{
+    const up=r.d>=0; const mag=Math.min(100, Math.abs(r.d)/AVG_ACV/3*100);
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:11.5px;margin:5px 0">
+      <span class="swatch" style="background:${color(r.c)}"></span>
+      <span style="flex:none;width:118px;color:var(--ink-2)">${r.c}</span>
+      <span style="flex:1;height:6px;background:var(--bg-2);border-radius:3px;position:relative">
+        <span style="position:absolute;${up?'left':'right'}:50%;width:${mag/2}%;height:100%;border-radius:3px;background:${up?'var(--good)':'var(--bad)'}"></span>
+        <span style="position:absolute;left:50%;top:-2px;width:1px;height:10px;background:var(--line)"></span>
+      </span>
+      <span class="num" style="width:60px;text-align:right;color:${up?'var(--good)':'var(--bad)'}">${up?'+':''}${usdK(r.d)}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================= RENDER: ECONOMICS */
+let econSort={k:'arr',dir:-1};
+function econRows(){
+  const {cust,arr}=attribute(MODEL,HALFLIFE);
+  return CH.map(c=>{
+    const customers=cust[c], aarr=arr[c], spend=SPEND[c];
+    const acv = customers>0 ? aarr/customers : 0;
+    const cac = customers>0 ? spend/customers : 0;
+    const ltv = acv*MARGIN*LIFE;
+    const ratio = cac>0 ? ltv/cac : 0;
+    const payback = acv>0 ? cac/(acv*MARGIN/12) : 0;
+    const roi = spend>0 ? SRC_PIPE[c]/spend : 0;
+    return {name:c,spend,customers,arr:aarr,cac,ltv,ratio,payback,roi};
+  });
+}
+function renderEcon(){
+  const rows=econRows();
+  rows.sort((a,b)=> econSort.dir*((a[econSort.k]>b[econSort.k])?1:(a[econSort.k]<b[econSort.k])?-1:0));
+  const tb=$('#econTable tbody');
+  tb.innerHTML=rows.map(r=>{
+    const rt = r.ratio>=4?'tone-good':r.ratio>=3?'tone-acc':r.ratio>=2?'tone-warn':'tone-bad';
+    return `<tr>
+      <td class="left"><span class="chip"><span class="swatch" style="background:${color(r.name)}"></span>${r.name}</span></td>
+      <td class="num">${usdK(r.spend)}</td>
+      <td class="num">${r.customers.toFixed(1)}</td>
+      <td class="num">${usdK(r.arr)}</td>
+      <td class="num">${usd(r.cac)}</td>
+      <td class="num">${usdK(r.ltv)}</td>
+      <td class="num ${rt}">${r.ratio.toFixed(1)}:1</td>
+      <td class="num">${r.payback.toFixed(0)} mo</td>
+      <td class="num">${r.roi.toFixed(1)}×</td>
+    </tr>`;
+  }).join('');
+  // totals
+  const tSpend=rows.reduce((a,r)=>a+r.spend,0), tArr=rows.reduce((a,r)=>a+r.arr,0), tCust=rows.reduce((a,r)=>a+r.customers,0);
+  const bCac=tCust>0?tSpend/tCust:0, bAcv=tCust>0?tArr/tCust:0, bLtv=bAcv*MARGIN*LIFE;
+  $('#econTable tfoot').innerHTML=`<tr style="font-weight:700">
+    <td class="left">Blended</td><td class="num">${usdK(tSpend)}</td><td class="num">${tCust.toFixed(0)}</td>
+    <td class="num">${usdK(tArr)}</td><td class="num">${usd(bCac)}</td><td class="num">${usdK(bLtv)}</td>
+    <td class="num tone-acc">${(bLtv/bCac).toFixed(1)}:1</td><td class="num">${(bCac/(bAcv*MARGIN/12)).toFixed(0)} mo</td>
+    <td class="num">${(TOTAL_SRC_PIPE/tSpend).toFixed(1)}×</td></tr>`;
+}
+
+/* ============================================================= RENDER: SATURATION */
+function miniCurve(canvas, c){
+  const s0=SAT[c].avgS, maxS=s0*2.4;
+  const pts=[]; for(let i=0;i<=40;i++){const s=maxS*i/40; pts.push({x:s,y:SAT[c].P(s)});}
+  new Chart(canvas,{type:'line',
+    data:{datasets:[
+      {data:pts,borderColor:color(c),borderWidth:2,pointRadius:0,tension:.2,fill:false,parsing:false},
+      {data:[{x:s0,y:SAT[c].P(s0)}],borderColor:'#fff',backgroundColor:'#fff',pointRadius:4,pointHoverRadius:4,showLine:false,parsing:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{type:'linear',display:false,min:0,max:maxS},y:{display:false,min:0}}}
+  });
+}
+function renderSaturation(){
+  const grid=$('#satGrid'); grid.innerHTML='';
+  CH.forEach((c,i)=>{
+    const [st,cls]=satStatus(c);
+    const m=SAT[c].marg(SAT[c].avgS)*1000; // per $1k
+    const el=document.createElement('div'); el.className='sat-card';
+    el.innerHTML=`<div class="top">
+        <span class="cname"><span class="swatch" style="background:${color(c)}"></span>${c}</span>
+        <span class="status ${cls}">${st}</span></div>
+      <div class="mini"><canvas id="mini${i}"></canvas></div>
+      <div class="stat"><span>Monthly spend</span><b>${usdK(SAT[c].avgS)}</b></div>
+      <div class="stat"><span>Marginal / next $1k</span><b style="color:${color(c)}">${usd(m)}</b></div>`;
+    grid.appendChild(el);
+    miniCurve(el.querySelector('canvas'), c);
+  });
+  // marginal bar chart
+  const rows=CH.map(c=>({c,m:SAT[c].marg(SAT[c].avgS)*1000})).sort((a,b)=>b.m-a.m);
+  new Chart($('#marginalChart'),{type:'bar',
+    data:{labels:rows.map(r=>r.c),datasets:[{data:rows.map(r=>r.m),
+      backgroundColor:rows.map(r=>color(r.c)),borderRadius:4,maxBarThickness:30}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${usd(c.parsed.x)} pipeline per next $1k`}}},
+      scales:{x:{grid:{color:'#1a2533'},ticks:{callback:v=>'$'+v}},y:{grid:{display:false}}}}
+  });
+}
+
+/* ============================================================= RENDER: BUDGET PLAN */
+function reallocate(maxPct){
+  const cur={}, pro={};
+  CH.forEach(c=>{cur[c]=SAT[c].avgS; pro[c]=SAT[c].avgS;});
+  const total=Object.values(cur).reduce((a,b)=>a+b,0);
+  let budget=total*maxPct/100;
+  const step=Math.max(250, total/600);
+  let lift=0, moved=0;
+  while(moved<budget){
+    // highest & lowest marginal at current proposed spend
+    let hi=null,lo=null;
+    CH.forEach(c=>{
+      const m=SAT[c].marg(pro[c]);
+      if(hi===null||m>SAT[hi].marg(pro[hi])) hi=c;
+      if(lo===null||m<SAT[lo].marg(pro[lo])) lo=c;
+    });
+    if(hi===lo) break;
+    if(pro[lo]-step < cur[lo]*0.4) { // lo hit floor → exclude by nudging: stop if all floored
+      // find next lowest not floored
+      const cand=CH.filter(c=>pro[c]-step>=cur[c]*0.4).sort((a,b)=>SAT[a].marg(pro[a])-SAT[b].marg(pro[b]));
+      if(!cand.length) break; lo=cand[0];
+    }
+    if(pro[hi]+step > cur[hi]*1.6){
+      const cand=CH.filter(c=>pro[c]+step<=cur[c]*1.6).sort((a,b)=>SAT[b].marg(pro[b])-SAT[a].marg(pro[a]));
+      if(!cand.length) break; hi=cand[0];
+    }
+    if(SAT[hi].marg(pro[hi]) <= SAT[lo].marg(pro[lo])) break; // no positive gain left
+    const gain = SAT[hi].marg(pro[hi])*step - SAT[lo].marg(pro[lo])*step;
+    pro[hi]+=step; pro[lo]-=step; moved+=step; lift+=gain;
+  }
+  return {cur,pro,lift:lift*12}; // annualised
+}
+function renderPlan(){
+  const pct=+$('#realloc').value;
+  const {cur,pro,lift}=reallocate(pct);
+  $('#planLift').textContent = '+'+usdK(lift);
+  const maxV=Math.max(...CH.map(c=>Math.max(cur[c],pro[c])));
+  const rows=CH.map(c=>({c,cur:cur[c],pro:pro[c],d:pro[c]-cur[c]})).sort((a,b)=>b.d-a.d);
+  $('#planOut').innerHTML=rows.map(r=>{
+    const wc=(r.cur/maxV*100), wp=(r.pro/maxV*100);
+    const up=r.d>=0;
+    return `<div class="bar-row">
+      <div class="nm"><span class="swatch" style="background:${color(r.c)}"></span>${r.c}</div>
+      <div class="dualbar">
+        <span class="b cur" style="width:${wc}%"></span>
+        <span class="b pro" style="width:${wp}%;background:${color(r.c)}"></span>
+      </div>
+      <div class="delta" style="color:${Math.abs(r.d)<1?'var(--ink-3)':up?'var(--good)':'var(--bad)'}">
+        ${usdK(r.cur)} → ${usdK(r.pro)} <span style="color:${up?'var(--good)':'var(--bad)'}">(${up?'+':''}${usdK(r.d)})</span>
+      </div></div>`;
+  }).join('');
+}
+
+/* ============================================================= EVENTS / INIT */
+document.querySelectorAll('#modelSeg button').forEach(b=>b.onclick=()=>{MODEL=b.dataset.m;renderAttr();renderEcon();});
+$('#halflife').oninput=e=>{HALFLIFE=+e.target.value;$('#halflifeVal').textContent=HALFLIFE+'d';if(MODEL==='decay'){renderAttr();renderEcon();}};
+$('#margin').oninput=e=>{MARGIN=+e.target.value/100;$('#marginVal').textContent=e.target.value+'%';renderKPIs();renderEcon();renderNarrative();};
+$('#life').oninput=e=>{LIFE=+e.target.value;$('#lifeVal').textContent=LIFE+'y';renderKPIs();renderEcon();renderNarrative();};
+$('#realloc').oninput=e=>{$('#reallocVal').textContent=e.target.value+'%';renderPlan();};
+$('#econTable thead').querySelectorAll('th').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.k; econSort.dir = econSort.k===k ? -econSort.dir : (k==='name'?1:-1); econSort.k=k; renderEcon();
+});
+// nav scroll-spy
+const links=[...document.querySelectorAll('#nav a')];
+links.forEach(a=>a.onclick=()=>document.getElementById(a.dataset.t).scrollIntoView({behavior:'smooth'}));
+const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){
+  links.forEach(l=>l.classList.toggle('active',l.dataset.t===e.target.id));}});},{rootMargin:'-45% 0px -50% 0px'});
+['overview','attribution','economics','saturation','plan'].forEach(id=>obs.observe(document.getElementById(id)));
+
+$('#rangeChip').textContent = DATA.meta.date_range[0]+'  →  '+DATA.meta.date_range[1];
+$('#footNote').innerHTML = `Synthetic dataset · seed ${DATA.meta.seed} · ${num(DATA.meta.n_opportunities)} simulated opportunities (${num(WON)} closed-won) · ${DATA.meta.n_months} months · ${CH.length} channels.
+  No real company data is represented. Attribution computed client-side from opportunity-level touch journeys. Built with vanilla JS + Chart.js.`;
+
+renderKPIs(); renderTrend(); renderFunnel(); renderNarrative();
+renderAttr(); renderEcon(); renderSaturation(); renderPlan();
+</script>
+</body>
+</html>
